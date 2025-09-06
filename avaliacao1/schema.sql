@@ -1,0 +1,3 @@
+-- (IGNORADO) Schema de exemplo para referência. Você disse que o banco real está em MySQL Workbench
+-- Não é necessário aplicar este arquivo; uso apenas como histórico.
+-- Originalmente criava o banco controle_financeiro e as tabelas usuarios, categorias e transacoes.
