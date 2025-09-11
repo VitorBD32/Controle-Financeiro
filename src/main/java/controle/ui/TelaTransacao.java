@@ -6,7 +6,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 import javax.swing.JButton;
@@ -353,7 +352,7 @@ public class TelaTransacao extends JFrame {
                     s = s.replace(',', '.');
                     valor = new BigDecimal(s);
                 }
-            } catch (NumberFormatException | IllegalArgumentException nfe) {
+            } catch (IllegalArgumentException nfe) {
                 javax.swing.JOptionPane.showMessageDialog(this, "Valor inválido: " + val);
                 return;
             }
