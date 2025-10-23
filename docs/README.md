@@ -106,6 +106,152 @@ O sistema utiliza um banco de dados MySQL para persistir os dados. O script `ava
     ```bash
     mvn exec:java
     ```
-
 Comando para rodar projeto
 .\run-ui.ps1
+
+## 6. Integração com API externa
+
+O projeto pode ser integrado com uma API externa para sincronização de dados. A URL alvo desta integração (produção) é:
+
+```
+http://www.datse.com.br/dev/syncjava2.php
+```
+
+Para testes locais, use o mock server incluído no repositório em `http://127.0.0.1:8000/syncjava.php`.
+
+Abaixo está um exemplo mínimo em Java que demonstra como o aplicativo desktop pode enviar uma requisição HTTP POST para essa URL com parâmetros codificados (UTF-8). Você pode adaptar este código para enviar dados do banco de dados (por exemplo, usuários, transações ou categorias) ao endpoint.
+
+Exemplo de snippet Java:
+
+```java
+public static void main(String[] args) throws Exception {
+    String url = "http://www.datse.com.br/dev/syncjava2.php"; // para mock local, use "http://127.0.0.1:8000/syncjava.php"
+    String urlParameters = "name=" + URLEncoder.encode("UESPI", "UTF-8") + "&age="
+            + URLEncoder.encode("2025", "UTF-8");
+
+    // Exemplo simplificado: abrir conexão, enviar POST e ler resposta
+    java.net.URL obj = new java.net.URL(url);
+    java.net.HttpURLConnection con = (java.net.HttpURLConnection) obj.openConnection();
+    con.setRequestMethod("POST");
+    con.setDoOutput(true);
+    try (java.io.DataOutputStream wr = new java.io.DataOutputStream(con.getOutputStream())) {
+        wr.writeBytes(urlParameters);
+        wr.flush();
+    }
+
+    int responseCode = con.getResponseCode();
+    System.out.println("Response Code : " + responseCode);
+    try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(con.getInputStream()))) {
+        String inputLine;
+        StringBuilder response = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) {
+            response.append(inputLine);
+        }
+        System.out.println("Response: " + response.toString());
+    }
+}
+```
+
+Recomendações de integração:
+
+- Proteja as credenciais — se for necessário autenticar na API, armazene chaves/segredos fora do código (ex: `config/db.properties` ou variáveis de ambiente) e não as versionar.
+- Envie apenas os dados necessários e trate erros de rede (timeouts, respostas não-200).
+- Considere usar bibliotecas HTTP (Apache HttpClient, OkHttp) para requisições mais robustas.
+- Se for sincronizar dados do banco local, implemente marcação de estado (por exemplo, campo `synced BOOLEAN` ou `last_synced TIMESTAMP`) para evitar duplicação.
+
+Nota: o snippet acima é um exemplo básico; adapte-o ao modelo de dados e ao fluxo de negócio do seu projeto `controle-financeiro`.
+
+## 7. Segurança: criptografia simétrica (AES)
+
+Para proteger dados sensíveis durante a sincronização com a API (por exemplo, informações pessoais ou credenciais), recomendamos usar criptografia simétrica AES. Abaixo estão orientações e um exemplo em Java para geração de chave derivada de senha (PBKDF2), encriptação e decriptação usando AES/CBC/PKCS5Padding.
+
+Pontos importantes:
+
+- Use AES com chave de 128 ou 256 bits (dependendo da política de JCE do Java). Para 256 bits, o JDK deve permitir chaves de tamanho maior (nas versões recentes do JDK isso já vem habilitado).
+- Nunca reutilize IVs (vetores de inicialização) — gere IVs aleatórios por operação e armazene/encaminhe o IV junto com o ciphertext.
+- Use PBKDF2 (Password-Based Key Derivation Function 2) para derivar uma chave segura a partir de uma senha/segredo, com salt e iterações suficientes (ex.: 10000+).
+- Proteja a senha/segredo que deriva a chave; armazene-o de forma segura (variáveis de ambiente, cofre de segredos, etc.).
+
+Exemplo em Java (derivação PBKDF2 + AES/CBC/PKCS5Padding):
+
+```java
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.SecureRandom;
+import java.util.Base64;
+
+public class AESUtil {
+    private static final String ALGO = "AES/CBC/PKCS5Padding";
+    private static final String KDF_ALGO = "PBKDF2WithHmacSHA256";
+
+    public static SecretKeySpec deriveKey(char[] password, byte[] salt, int iterations, int keyLen) throws Exception {
+        PBEKeySpec spec = new PBEKeySpec(password, salt, iterations, keyLen);
+        SecretKeyFactory skf = SecretKeyFactory.getInstance(KDF_ALGO);
+        SecretKey key = skf.generateSecret(spec);
+        return new SecretKeySpec(key.getEncoded(), "AES");
+    }
+
+    public static String encrypt(String plainText, SecretKeySpec key) throws Exception {
+        Cipher cipher = Cipher.getInstance(ALGO);
+        byte[] iv = new byte[16];
+        SecureRandom sr = new SecureRandom();
+        sr.nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+        byte[] encrypted = cipher.doFinal(plainText.getBytes("UTF-8"));
+        byte[] combined = new byte[iv.length + encrypted.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+        return Base64.getEncoder().encodeToString(combined);
+    }
+
+    public static String decrypt(String cipherTextBase64, SecretKeySpec key) throws Exception {
+        byte[] combined = Base64.getDecoder().decode(cipherTextBase64);
+        byte[] iv = new byte[16];
+        byte[] encrypted = new byte[combined.length - 16];
+        System.arraycopy(combined, 0, iv, 0, 16);
+        System.arraycopy(combined, 16, encrypted, 0, encrypted.length);
+        Cipher cipher = Cipher.getInstance(ALGO);
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+        byte[] original = cipher.doFinal(encrypted);
+        return new String(original, "UTF-8");
+    }
+
+    // Exemplo de uso
+    public static void main(String[] args) throws Exception {
+        char[] password = "sua-senha-secreta".toCharArray(); // ideal: obter de variável de ambiente
+        byte[] salt = new byte[16];
+        new SecureRandom().nextBytes(salt);
+        SecretKeySpec key = deriveKey(password, salt, 20000, 256);
+
+        String plain = "dados-sensiveis-a-enviar";
+        String cipherText = encrypt(plain, key);
+        System.out.println("Cipher (base64): " + cipherText);
+
+        String decrypted = decrypt(cipherText, key);
+        System.out.println("Decrypted: " + decrypted);
+    }
+}
+```
+
+Recomendações práticas:
+
+- Armazene o salt e o IV associados ao ciphertext (por exemplo, prefixados ao ciphertext como no exemplo acima) para permitir decriptação.
+- Para autenticação de integridade e proteção contra adulteração, considere usar AES-GCM (Authenticated Encryption) ou calcular um HMAC separado sobre o ciphertext.
+- Não exponha a senha ou chave em repositórios. Prefira variáveis de ambiente ou serviços de cofre.
+- Teste performance: derivação PBKDF2 com muitas iterações aumenta segurança mas consome CPU; ajuste conforme necessidade.
+
+Implementação no `controle-financeiro`:
+
+- Crie uma classe utilitária (por exemplo `controle.util.AESUtil`) com métodos para derivar chave, encriptar e decriptar.
+- Ao enviar dados para o endpoint de sincronização (ex.: `http://www.datse.com.br/dev/syncjava2.php` ou, para testes locais, `http://127.0.0.1:8000/syncjava.php`), você pode antes cifrar o payload JSON e enviar o conteúdo cifrado (base64) e o salt/iv necessários para decriptação no servidor.
+- Documente no `config/` onde configurar a senha/segredo para derivação (ex.: `config/api.properties` ou variável de ambiente `API_SYNC_SECRET`).
+
+Com isso, finalize a etapa de documentação da segurança; se quiser, posso também:
+
+- Implementar `AESUtil` em `src/main/java/controle/util/AESUtil.java` e escrever testes básicos.
+- Adicionar suporte de configuração em `config/api.properties` e leitura em `controle.config.DBConfig` (ou criar `APIConfig`).

@@ -54,6 +54,7 @@ public class TelaTransacao extends JFrame {
     private final JFormattedTextField tfValor;
     private final JSpinner spData;
     private final JFormattedTextField tfDescricao = new JFormattedTextField();
+    private final JButton btnSync = new JButton("Sincronizar");
 
     public TelaTransacao() {
         super("Transações");
@@ -127,6 +128,7 @@ public class TelaTransacao extends JFrame {
         actions.add(btnSalvar);
         actions.add(btnExcluir);
         actions.add(btnRefresh);
+        actions.add(btnSync);
         add(actions, BorderLayout.SOUTH);
 
         // actions
@@ -135,6 +137,7 @@ public class TelaTransacao extends JFrame {
         btnSalvar.addActionListener(e -> save());
         btnExcluir.addActionListener(e -> deleteSelected());
         btnNovaCategoria.addActionListener(e -> createCategoria());
+        btnSync.addActionListener(e -> syncData());
 
         loadCombos();
         loadData();
@@ -353,7 +356,7 @@ public class TelaTransacao extends JFrame {
                     s = s.replace(',', '.');
                     valor = new BigDecimal(s);
                 }
-            } catch (NumberFormatException | IllegalArgumentException nfe) {
+            } catch (Exception ex) {
                 javax.swing.JOptionPane.showMessageDialog(this, "Valor inválido: " + val);
                 return;
             }
@@ -408,5 +411,53 @@ public class TelaTransacao extends JFrame {
             TelaTransacao t = new TelaTransacao();
             t.setVisible(true);
         });
+    }
+
+    private void syncData() {
+        btnSync.setEnabled(false);
+        btnSync.setText("Sincronizando...");
+        javax.swing.SwingWorker<String, Void> worker = new javax.swing.SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                try {
+                    return ((TransacaoDAOImpl) transDao).syncToAPI();
+                } catch (Exception ex) {
+                    // devolve mensagem amigável para o done()
+                    return "Erro durante sincronização: " + ex.getClass().getSimpleName() + ": " + ex.getMessage();
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String result = get();
+                    // Se detectar problema de conexão, mostrar instrução útil
+                    if (result != null && (result.contains("ConnectException") || result.toLowerCase().contains("connection refused") || result.toLowerCase().contains("não foi possível conectar"))) {
+                        String msg = "Não foi possível conectar ao servidor de sincronização.\n"
+                                + "Verifique se o servidor de sincronização está em execução e se a URL está correta.\n"
+                                + "URL (produção): http://www.datse.com.br/dev/syncjava2.php\n"
+                                + "Para testes locais, use o mock: http://127.0.0.1:8000/syncjava.php\n"
+                                + "Detalhes: " + result;
+                        javax.swing.JOptionPane.showMessageDialog(TelaTransacao.this, msg, "Erro na sincronização", javax.swing.JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        // Exibir resumo em área rolável para boa usabilidade
+                        javax.swing.JTextArea ta = new javax.swing.JTextArea(result != null ? result : "Sincronização concluída");
+                        ta.setEditable(false);
+                        ta.setLineWrap(true);
+                        ta.setWrapStyleWord(true);
+                        javax.swing.JScrollPane sp = new javax.swing.JScrollPane(ta);
+                        sp.setPreferredSize(new java.awt.Dimension(600, 300));
+                        javax.swing.JOptionPane.showMessageDialog(TelaTransacao.this, sp, "Resultado da sincronização", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    javax.swing.JOptionPane.showMessageDialog(TelaTransacao.this, "Erro inesperado na sincronização: " + ex.getMessage(), "Erro", javax.swing.JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    btnSync.setEnabled(true);
+                    btnSync.setText("Sincronizar");
+                    loadData(); // atualizar tabela caso alguma transação tenha sido marcada
+                }
+            }
+        };
+        worker.execute();
     }
 }

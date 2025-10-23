@@ -4,13 +4,21 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import controle.Conexao;
+import controle.config.APIConfig;
 import controle.model.Transacao;
+import controle.util.HttpSyncUtil;
 
+/**
+ * Implementação do DAO de Transação com operação de sincronização para a API
+ * externa.
+ */
 public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
@@ -21,9 +29,8 @@ public class TransacaoDAOImpl implements TransacaoDAO {
             ps.setInt(2, t.getIdCategoria());
             ps.setString(3, t.getTipo());
             ps.setBigDecimal(4, t.getValor());
-            // convert LocalDateTime to java.sql.Timestamp
             if (t.getData() != null) {
-                ps.setTimestamp(5, java.sql.Timestamp.valueOf(t.getData()));
+                ps.setTimestamp(5, Timestamp.valueOf(t.getData()));
             } else {
                 ps.setTimestamp(5, null);
             }
@@ -45,19 +52,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Transacao t = new Transacao();
-                    t.setId(rs.getInt("id_transacao"));
-                    t.setIdUsuario(rs.getInt("id_usuario"));
-                    t.setIdCategoria(rs.getInt("id_categoria"));
-                    t.setTipo(rs.getString("tipo"));
-                    t.setValor(rs.getBigDecimal("valor"));
-                    java.sql.Timestamp ts = rs.getTimestamp("data");
-                    if (ts != null) {
-                        t.setData(ts.toLocalDateTime());
-                    } else {
-                        t.setData(null);
-                    }
-                    t.setDescricao(rs.getString("descricao"));
+                    Transacao t = toTransacao(rs);
                     return t;
                 }
             }
@@ -71,20 +66,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                Transacao t = new Transacao();
-                t.setId(rs.getInt("id_transacao"));
-                t.setIdUsuario(rs.getInt("id_usuario"));
-                t.setIdCategoria(rs.getInt("id_categoria"));
-                t.setTipo(rs.getString("tipo"));
-                t.setValor(rs.getBigDecimal("valor"));
-                java.sql.Timestamp ts = rs.getTimestamp("data");
-                if (ts != null) {
-                    t.setData(ts.toLocalDateTime());
-                } else {
-                    t.setData(null);
-                }
-                t.setDescricao(rs.getString("descricao"));
-                list.add(t);
+                list.add(toTransacao(rs));
             }
         }
         return list;
@@ -95,24 +77,21 @@ public class TransacaoDAOImpl implements TransacaoDAO {
         String sql = "SELECT id_transacao, id_usuario, id_categoria, tipo, valor, data, descricao FROM transacoes WHERE data BETWEEN ? AND ? ORDER BY data DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setTimestamp(1, inicio != null ? java.sql.Timestamp.valueOf(inicio.atStartOfDay()) : null);
-            ps.setTimestamp(2, fim != null ? java.sql.Timestamp.valueOf(fim.atStartOfDay()) : null);
+            Timestamp tInicio = inicio != null ? Timestamp.valueOf(inicio.atStartOfDay()) : null;
+            Timestamp tFim = fim != null ? Timestamp.valueOf(fim.plusDays(1).atStartOfDay().minusNanos(1)) : null;
+            if (tInicio != null) {
+                ps.setTimestamp(1, tInicio);
+            } else {
+                ps.setTimestamp(1, null);
+            }
+            if (tFim != null) {
+                ps.setTimestamp(2, tFim);
+            } else {
+                ps.setTimestamp(2, null);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Transacao t = new Transacao();
-                    t.setId(rs.getInt("id_transacao"));
-                    t.setIdUsuario(rs.getInt("id_usuario"));
-                    t.setIdCategoria(rs.getInt("id_categoria"));
-                    t.setTipo(rs.getString("tipo"));
-                    t.setValor(rs.getBigDecimal("valor"));
-                    java.sql.Timestamp ts = rs.getTimestamp("data");
-                    if (ts != null) {
-                        t.setData(ts.toLocalDateTime());
-                    } else {
-                        t.setData(null);
-                    }
-                    t.setDescricao(rs.getString("descricao"));
-                    list.add(t);
+                    list.add(toTransacao(rs));
                 }
             }
         }
@@ -128,7 +107,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
             ps.setString(3, t.getTipo());
             ps.setBigDecimal(4, t.getValor());
             if (t.getData() != null) {
-                ps.setTimestamp(5, java.sql.Timestamp.valueOf(t.getData()));
+                ps.setTimestamp(5, Timestamp.valueOf(t.getData()));
             } else {
                 ps.setTimestamp(5, null);
             }
@@ -146,4 +125,63 @@ public class TransacaoDAOImpl implements TransacaoDAO {
             return ps.executeUpdate() > 0;
         }
     }
+
+    private Transacao toTransacao(ResultSet rs) throws Exception {
+        Transacao t = new Transacao();
+        t.setId(rs.getInt("id_transacao"));
+        t.setIdUsuario(rs.getInt("id_usuario"));
+        t.setIdCategoria(rs.getInt("id_categoria"));
+        t.setTipo(rs.getString("tipo"));
+        t.setValor(rs.getBigDecimal("valor"));
+        Timestamp ts = rs.getTimestamp("data");
+        if (ts != null) {
+            t.setData(ts.toLocalDateTime());
+        } else {
+            t.setData((LocalDateTime) null);
+        }
+        t.setDescricao(rs.getString("descricao"));
+        return t;
+    }
+
+    /**
+     * Sincroniza transações com a API externa; retorna resumo das operações.
+     * Observação: a interface TransacaoDAO não declara esse método — é
+     * específico da implementação.
+     */
+    public String syncToAPI() {
+        List<Transacao> transacoes;
+        try {
+            transacoes = findAll(); // ideal: filtrar apenas não sincronizadas se existir campo
+        } catch (Exception e) {
+            return "Erro ao obter transacoes: " + e.getMessage();
+        }
+
+        StringBuilder summary = new StringBuilder();
+        int success = 0;
+        int failed = 0;
+
+        for (Transacao t : transacoes) {
+            try {
+                String dataStr = t.getData() != null ? t.getData().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "";
+                String descricao = t.getDescricao() != null ? t.getDescricao().replace("\"", "\\\"") : "";
+                String valorStr = t.getValor() != null ? t.getValor().toPlainString() : "0";
+                String jsonData = String.format("{\"id\":%d,\"tipo\":\"%s\",\"valor\":%s,\"data\":\"%s\",\"descricao\":\"%s\"}",
+                        t.getId(), t.getTipo(), valorStr, dataStr, descricao);
+
+                String payload = HttpSyncUtil.buildEncryptedPayload(jsonData, APIConfig.getSyncSecret());
+                String response = HttpSyncUtil.sendPost(APIConfig.getSyncUrl(), payload);
+
+                summary.append("OK:").append(t.getId()).append(" ").append(response).append("\n");
+                success++;
+                // TODO: Marcar como synced no DB se existir coluna apropriada (idempotência)
+            } catch (Exception ex) {
+                summary.append("ERR:").append(t.getId()).append(" ").append(ex.getClass().getSimpleName()).append(": ").append(ex.getMessage()).append("\n");
+                failed++;
+            }
+        }
+
+        summary.insert(0, String.format("Sincronizacao finalizada. Sucesso: %d, Falhas: %d\n", success, failed));
+        return summary.toString();
+    }
+
 }
