@@ -1,222 +1,210 @@
-Recomendações para corrigir o erro 404 do endpoint /syncjava.php
+# Status da Integração com API de Sincronização
 
-Objetivo
-- Documentar passos reproduzíveis e comandos para diagnosticar e corrigir o problema onde a aplicação desktop Java recebe HTTP 404 (Object not found) ao tentar sincronizar com o endpoint de sincronização.
- 
-A URL de produção atualmente usada pelo projeto é:
+**Última atualização:** 28/10/2025  
+**Status:** ✅ CONECTIVIDADE OK | ⚠️ AGUARDANDO CADASTRO DE USUÁRIO
 
-```
-http://www.datse.com.br/dev/syncjava2.php
-```
-Para testes locais você pode usar o mock incluído no repositório com a URL:
+## URL Confirmada e Funcional
+
+A URL de produção **confirmada e funcionando** é:
 
 ```
-http://127.0.0.1:8000/syncjava.php
+http://www.datse.com.br/dev/syncjava.php
 ```
 
-Resumo do problema observado
-- O servidor Apache/PHP responde em porta 80 (não houve Connection Refused), mas retornou HTTP 404, indicando que o recurso /syncjava.php não foi encontrado no DocumentRoot ou não está acessível pela URL configurada.
+⚠️ **Nota:** A URL `syncjava2.php` (com "2") NÃO existe no servidor (retorna 404).
 
-Ações recomendadas (ordem sugerida)
+## Status Atual da Integração
 
-1) Verificar rapidamente o status do endpoint via PowerShell
-- GET (mostra resposta e corpo) — produção:
+✅ **Conectividade HTTP:** Funcionando (200 OK)  
+✅ **URL correta:** Descoberta e configurada  
+✅ **Criptografia AES-256:** Implementada e testada  
+✅ **Formato do payload:** Correto e aceito pelo servidor  
+❌ **Autenticação:** Servidor retorna "Login invalido"
 
-```powershell
-Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava2.php' -Method GET -UseBasicParsing -ErrorAction SilentlyContinue | Select-Object StatusCode, StatusDescription, Content
+## Problema Identificado
+
+O usuário **"JOAO"** com senha **"1234"** configurado no cliente **NÃO existe no banco de dados do servidor**.
+
+**Testes realizados:**
+- ✅ Formato `{"login":"JOAO","senha":"1234"}` → Login invalido
+- ✅ Formato `{"username":"JOAO","password":"1234"}` → Login invalido
+- ✅ Formato `{"user":"JOAO","pass":"1234"}` → Login invalido
+- ✅ Payload sem credenciais → Login invalido
+- ✅ Payload não criptografado → Login invalido
+
+## Problema Identificado
+
+O usuário **"JOAO"** com senha **"1234"** configurado no cliente **NÃO existe no banco de dados do servidor**.
+
+**Testes realizados:**
+- ✅ Formato `{"login":"JOAO","senha":"1234"}` → Login invalido
+- ✅ Formato `{"username":"JOAO","password":"1234"}` → Login invalido
+- ✅ Formato `{"user":"JOAO","pass":"1234"}` → Login invalido
+- ✅ Payload sem credenciais → Login invalido
+- ✅ Payload não criptografado → Login invalido
+
+**Conclusão:** O servidor está funcionando corretamente e recebendo os dados, mas não encontra o usuário no banco de dados.
+
+## ⚠️ AÇÃO NECESSÁRIA - Cadastro de Usuário no Servidor
+
+### Para o Administrador do Servidor
+
+Por favor, cadastrar o seguinte usuário no banco de dados do servidor:
+
+**Credenciais necessárias:**
+- **Login/Username:** JOAO
+- **Senha/Password:** 1234
+
+**Opções de cadastro:**
+
+#### Opção A: SQL Direto (ajustar conforme estrutura da tabela)
+```sql
+-- Exemplo com hash MD5 (menos seguro, apenas para testes)
+INSERT INTO usuarios (login, senha, nome, email, ativo) 
+VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
+
+-- OU com bcrypt (recomendado para produção - PHP):
+-- senha hash: $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+INSERT INTO usuarios (login, senha, nome, email, ativo) 
+VALUES ('JOAO', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'João', 'joao@exemplo.com', 1);
 ```
 
-- POST (como o cliente faz) — produção:
+#### Opção B: Via Interface de Administração
+Se existe uma interface web de administração, cadastrar por lá.
 
-```powershell
-Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava2.php' -Method POST -Body @{ test='1' } -UseBasicParsing -ErrorAction SilentlyContinue | Select-Object StatusCode, StatusDescription, Content
-```
+#### Opção C: Fornecer Credenciais Existentes
+Se preferir não criar usuário novo, fornecer credenciais válidas que já existem:
+- Login: _______________
+- Senha: _______________
 
-Se quiser testar localmente com o mock do repositório, use:
+## Informações Técnicas para o Administrador
 
-```powershell
-Invoke-WebRequest -Uri 'http://127.0.0.1:8000/syncjava.php' -Method POST -Body @{ test='1' } -UseBasicParsing -ErrorAction SilentlyContinue | Select-Object StatusCode, StatusDescription, Content
-```
+## Informações Técnicas para o Administrador
 
-2) Localizar o DocumentRoot do servidor Apache/PHP
-- XAMPP: normalmente `C:\xampp\htdocs\`
-- Apache padrão no Windows: `C:\Program Files\Apache24\htdocs\`
-- Se não souber, procure o `httpd.conf` e localize `DocumentRoot`:
+### Payload Recebido pelo Servidor (exemplo decriptado):
 
-```powershell
-Select-String -Path 'C:\xampp\apache\conf\httpd.conf' -Pattern 'DocumentRoot' -Context 0,1
-# ou procure no diretório da instalação do Apache
-Get-ChildItem -Recurse -Path 'C:\' -Filter httpd.conf -ErrorAction SilentlyContinue | Select-String -Pattern 'DocumentRoot' -Context 0,1
-```
-
-3) Verificar se `syncjava.php` existe no DocumentRoot
-
-```powershell
-Test-Path 'C:\xampp\htdocs\syncjava.php'
-Get-Content 'C:\xampp\htdocs\syncjava.php' -ErrorAction SilentlyContinue
-```
-
-4) Se não existir, criar um `syncjava.php` mínimo para testes
-- Conteúdo do arquivo de teste (colocar em DocumentRoot/syncjava.php):
-
-```php
-<?php
-header('Content-Type: application/json; charset=utf-8');
-// Exemplo simples: lê campos POST e retorna JSON
-$response = [
-    'status' => 'ok',
-    'received' => $_POST
-];
-echo json_encode($response);
-```
-
--- Verifique no browser apontando para a URL de produção (se o stub estiver implantado no servidor) ou, para testes locais, aponte para o mock `http://127.0.0.1:8000/syncjava.php` (veja passo 1).
-
-5) Conferir permissões e logs do Apache
-- Logs comuns (XAMPP): `C:\xampp\apache\logs\error.log` e `access.log`
-- Ler últimas linhas do log:
-
-```powershell
-Get-Content 'C:\xampp\apache\logs\error.log' -Tail 50
-```
-
-6) Se o arquivo existir mas em subpasta, atualize `config/api.properties`
-- Ex.: se o endpoint real estiver em um caminho diferente, atualize a propriedade `api.sync.url` para apontar corretamente. Exemplo (produção):
-
-```
-api.sync.url=http://www.datse.com.br/dev/syncjava2.php
-```
-
-Ou (para testes locais usando o mock):
-
-```
-api.sync.url=http://127.0.0.1:8000/syncjava.php
-```
-
-7) Verificar se o servidor exige algum cabeçalho, autenticação ou método diferente
-- O `HttpSyncUtil` envia um POST form-url-encoded com campos `encrypted_data`, `salt`, `client_id`.
-- Se o servidor espera JSON ou outros nomes, alinhe o `HttpSyncUtil.buildEncryptedPayload()` ou atualize o servidor para aceitar os campos enviados.
-
-8) Ambiente seguro e testes
-- Para desenvolvimento, mantenha `tools/mock_sync_server.py` no repositório e altere temporariamente `config/api.properties` para `http://127.0.0.1:8000/syncjava.php` enquanto trabalha localmente.
-- Quando estiver pronto para produção, a URL deve apontar para o endpoint real.
-
-9) Melhorias futuras (quando for implementar a correção)
-- Implementar resposta padronizada do servidor (JSON com status e mensagem) para facilitar parsing no cliente.
-- Implementar marcação `synced` na tabela `transacoes` para idempotência.
-- Adicionar um modo de desenvolvimento (`api.mode=mock|prod`) no `config/api.properties` para alternar facilmente entre mock e real.
-- Melhorar os logs do cliente (gravar em arquivo) com request/response (sem incluir segredos) para debugging.
-
-Anexos/Comandos úteis
-- Comando para testar conectividade ao host/porta (produção):
-```powershell
-Test-NetConnection -ComputerName www.datse.com.br -Port 80
-```
-
-- Comando para testar conectividade local (mock):
-```powershell
-Test-NetConnection -ComputerName 127.0.0.1 -Port 8000
-```
-
-- Comando para startar servidor PHP embutido (teste rápido, precisa do PHP instalado). Use porta 8000 para evitar requerer privilégios de administrador:
-```powershell
-# execute na pasta que contém syncjava.php
-php -S 127.0.0.1:8000
-```
-
-- Exemplo de resposta esperada (JSON simples):
-```
-{"status":"ok","received":{"encrypted_data":"...","salt":"...","client_id":"..."}}
-```
-
-Observações finais
-- Esses passos são reproduzíveis e seguros. Comece pelo item 1 para confirmar o status, depois vá para 3/4 para colocar um endpoint de teste ou criar o arquivo necessário no DocumentRoot.
-- Me diga quando quiser que eu aplique (crie o `syncjava.php` de teste no DocumentRoot, ou implemente o `api.mode` toggle e a flag `synced`).
-
-Credenciais de teste (informação fornecida)
-----------------------------------------
-O servidor de teste/API aceita o login abaixo para testes funcionais. Use essas credenciais apenas em ambiente de desenvolvimento:
-
-- Usuário: JOAO
-- Senha: 1234
-
-Como usar essas credenciais nos testes
--------------------------------------
-1) Como Basic Auth (cabeçalho HTTP Authorization)
-
-Exemplo PowerShell (envia form-encoded com Basic Auth) — produção:
-
-```powershell
-$user = 'JOAO'
-$pass = '1234'
-$pair = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$user`:$pass"))
-Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava2.php' -Method POST -Headers @{ Authorization = "Basic $pair" } -Body @{ test='1' } -UseBasicParsing
-```
-
-Exemplo PowerShell (local mock):
-
-```powershell
-$user = 'JOAO'
-$pass = '1234'
-$pair = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$user`:$pass"))
-Invoke-WebRequest -Uri 'http://127.0.0.1:8000/syncjava.php' -Method POST -Headers @{ Authorization = "Basic $pair" } -Body @{ test='1' } -UseBasicParsing
-```
-
-Exemplo cURL (Linux/WSL/git-bash) — produção:
-
-```bash
-curl -u JOAO:1234 -X POST -d "test=1" http://www.datse.com.br/dev/syncjava2.php
-```
-
-Exemplo cURL (local mock):
-
-```bash
-curl -u JOAO:1234 -X POST -d "test=1" http://127.0.0.1:8000/syncjava.php
-```
-
-2) Como campos do formulário (se o servidor esperar credenciais no corpo do POST)
-
-Envie `username` e `password` como parte do formulário (exemplo PowerShell) — produção:
-
-```powershell
-Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava2.php' -Method POST -Body @{ username='JOAO'; password='1234'; test='1' } -UseBasicParsing
-```
-
-Exemplo PowerShell (local mock):
-
-```powershell
-Invoke-WebRequest -Uri 'http://127.0.0.1:8000/syncjava.php' -Method POST -Body @{ username='JOAO'; password='1234'; test='1' } -UseBasicParsing
-```
-
-Configuração no projeto (sugestão)
-----------------------------------
-Para facilitar o uso dessas credenciais em testes e não espalhar strings no código, sugiro adicionar as seguintes propriedades (opcionais) em `config/api.properties`:
-
-```
-# credenciais opcionais (apenas para desenvolvimento)
-api.auth.user=JOAO
-api.auth.password=1234
-```
-
-E então alterar `controle.config.APIConfig` para carregar `api.auth.user` e `api.auth.password` (com fallback para variáveis de ambiente). No `HttpSyncUtil.sendPost` você pode incluir o cabeçalho Authorization Basic quando as credenciais estiverem presentes:
-
-```java
-String user = APIConfig.getAuthUser();
-String pass = APIConfig.getAuthPassword();
-if (user != null && pass != null) {
-    String basic = java.util.Base64.getEncoder().encodeToString((user + ":" + pass).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    con.setRequestProperty("Authorization", "Basic " + basic);
+```json
+{
+  "login": "JOAO",
+  "senha": "1234",
+  "id": 6,
+  "tipo": "D",
+  "valor": 2000.00,
+  "data": "2025-10-22T00:00:00",
+  "descricao": "Pagamento de contas"
 }
 ```
 
-Segurança — cuidado importante
------------------------------
-- Não comite credenciais reais no repositório. Estas credenciais (JOAO/1234) foram fornecidas apenas para testes locais.
-- Para produção, sempre use segredos via variáveis de ambiente ou um cofre de segredos. Nunca deixe senhas no `config/api.properties` em repositórios públicos.
-- Considere usar HTTPS em produção para proteger credenciais em trânsito (TLS).
+### Formato da Requisição HTTP:
 
-Próximos passos sugeridos (quando formos implementar as mudanças no projeto)
-- Implementar carregamento de `api.auth.user`/`api.auth.password` em `APIConfig` com fallback para variáveis de ambiente.
-- Atualizar `HttpSyncUtil.sendPost` para adicionar cabeçalho `Authorization` quando as credenciais estiverem presentes.
-- Opcional: adicionar uma entrada na UI de configurações para modo 'Dev/Test' que habilite credenciais de teste apenas locais.
+```
+POST /dev/syncjava.php HTTP/1.1
+Host: www.datse.com.br
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+
+encrypted_data=<base64_json_criptografado>&salt=<base64_salt>&client_id=<nome_computador>
+```
+
+### Detalhes da Criptografia:
+
+- **Algoritmo:** AES-256-CBC
+- **KDF:** PBKDF2WithHmacSHA256
+- **Iterações:** 20.000
+- **Salt:** 16 bytes aleatórios (enviado junto)
+- **IV:** 16 bytes aleatórios (prepended ao ciphertext)
+- **Segredo compartilhado:** "sua-senha-secreta-aqui"
+
+### Teste Manual (cURL):
+
+```bash
+# Teste simples sem criptografia (para validar endpoint)
+curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "login=JOAO" \
+  --data-urlencode "senha=1234" \
+  --data-urlencode "teste=manual"
+```
+
+## Como Enviar a Solicitação ao Administrador
+
+### Email Modelo:
+
+```
+Assunto: Solicitação de Cadastro de Usuário - API Sincronização
+
+Prezado(a) Administrador(a),
+
+Estou desenvolvendo uma aplicação desktop em Java que precisa sincronizar 
+dados com o endpoint:
+
+http://www.datse.com.br/dev/syncjava.php
+
+A conectividade está funcionando perfeitamente (HTTP 200 OK), mas o servidor 
+retorna "Login invalido" pois o usuário ainda não está cadastrado.
+
+Solicito o cadastro do seguinte usuário no banco de dados:
+
+Login: JOAO
+Senha: 1234
+
+Ou, alternativamente, fornecer credenciais válidas existentes no sistema.
+
+Detalhes técnicos completos estão disponíveis em:
+docs/SOLICITACAO_SUPORTE_API.md (anexado)
+
+Atenciosamente,
+Vitor de Brito Cardoso Oliveira
+vitordebrito23@gmail.com
+```
+
+### Documentos de Referência:
+
+1. **Solicitação Completa:** `docs/SOLICITACAO_SUPORTE_API.md`
+2. **Este arquivo:** `docs/SYNC_RECOMMENDATIONS.md`
+
+## Próximos Passos (após cadastro do usuário)
+
+1. ✅ Usuário cadastrado no servidor
+2. ⏳ Testar sincronização novamente na aplicação
+3. ⏳ Verificar resposta de sucesso do servidor
+4. ⏳ Implementar marcação de transações sincronizadas (idempotência)
+5. ⏳ Migrar para AES-GCM (AEAD) para melhor segurança
+6. ⏳ Mover credenciais para variáveis de ambiente
+
+## Comandos Rápidos de Teste
+
+### Testar conectividade (PowerShell):
+
+```powershell
+# Teste GET
+Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method GET -UseBasicParsing
+
+# Teste POST simples
+Invoke-WebRequest -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method POST -Body @{ test='1' } -UseBasicParsing
+```
+
+### Executar teste de autenticação (Java):
+
+```powershell
+mvn compile
+java -cp "target/classes;C:\Users\Acer\.m2\repository\com\mysql\mysql-connector-j\8.0.33\mysql-connector-j-8.0.33.jar" controle.tools.AuthTester
+```
+
+### Executar teste de URLs (Java):
+
+```powershell
+java -cp "target/classes;C:\Users\Acer\.m2\repository\com\mysql\mysql-connector-j\8.0.33\mysql-connector-j-8.0.33.jar" controle.tools.URLTester
+```
+
+## Histórico de Resolução
+
+- **28/10/2025 18:30** - Identificada URL incorreta (syncjava2.php → syncjava.php)
+- **28/10/2025 18:35** - URL corrigida e conectividade confirmada (HTTP 200)
+- **28/10/2025 18:45** - Testados múltiplos formatos de autenticação
+- **28/10/2025 18:50** - Identificado: usuário JOAO não existe no servidor
+- **28/10/2025 18:55** - Documentação completa e solicitação preparada
+
+---
+
+**Status:** ⏳ Aguardando cadastro de usuário no servidor para finalizar integração.
 

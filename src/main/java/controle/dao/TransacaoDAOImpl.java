@@ -165,14 +165,39 @@ public class TransacaoDAOImpl implements TransacaoDAO {
                 String dataStr = t.getData() != null ? t.getData().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "";
                 String descricao = t.getDescricao() != null ? t.getDescricao().replace("\"", "\\\"") : "";
                 String valorStr = t.getValor() != null ? t.getValor().toPlainString() : "0";
-                String jsonData = String.format("{\"id\":%d,\"tipo\":\"%s\",\"valor\":%s,\"data\":\"%s\",\"descricao\":\"%s\"}",
-                        t.getId(), t.getTipo(), valorStr, dataStr, descricao);
+
+                // Incluir credenciais no JSON (nome e senha do config)
+                // O servidor espera "nome" (não "login") conforme estrutura: id, nome, email, senha
+                String nome = APIConfig.getAuthUser() != null ? APIConfig.getAuthUser() : "";
+                String senha = APIConfig.getAuthPassword() != null ? APIConfig.getAuthPassword() : "";
+
+                String jsonData = String.format("{\"nome\":\"%s\",\"senha\":\"%s\",\"id\":%d,\"tipo\":\"%s\",\"valor\":%s,\"data\":\"%s\",\"descricao\":\"%s\"}",
+                        nome, senha, t.getId(), t.getTipo(), valorStr, dataStr, descricao);
 
                 String payload = HttpSyncUtil.buildEncryptedPayload(jsonData, APIConfig.getSyncSecret());
-                String response = HttpSyncUtil.sendPost(APIConfig.getSyncUrl(), payload);
+                java.util.List<String> urls = APIConfig.getSyncUrls();
+                String response = null;
+                Exception lastEx = null;
+                for (String u : urls) {
+                    try {
+                        System.out.println("[TransacaoDAOImpl] Trying sync URL: " + u + " for transacao id=" + t.getId());
+                        response = HttpSyncUtil.sendPost(u, payload);
+                        break; // success
+                    } catch (Exception e) {
+                        lastEx = e;
+                        System.out.println("[TransacaoDAOImpl] Failed on url=" + u + " -> " + e.getMessage());
+                        // try next URL
+                    }
+                }
 
-                summary.append("OK:").append(t.getId()).append(" ").append(response).append("\n");
-                success++;
+                if (response != null) {
+                    summary.append("OK:").append(t.getId()).append(" ").append(response).append("\n");
+                    success++;
+                } else {
+                    String errMsg = lastEx != null ? lastEx.getMessage() : "Unknown error";
+                    summary.append("ERR:").append(t.getId()).append(" Exception: ").append(errMsg).append("\n");
+                    failed++;
+                }
                 // TODO: Marcar como synced no DB se existir coluna apropriada (idempotência)
             } catch (Exception ex) {
                 summary.append("ERR:").append(t.getId()).append(" ").append(ex.getClass().getSimpleName()).append(": ").append(ex.getMessage()).append("\n");

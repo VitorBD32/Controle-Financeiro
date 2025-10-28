@@ -26,15 +26,36 @@ public class APIConfig {
     }
 
     public static String getSyncUrl() {
-        // mode can be 'prod' or 'mock' (default 'prod'). Environment variable API_MODE overrides.
-        String mode = System.getenv().getOrDefault("API_MODE", props.getProperty("api.mode", "prod")).trim().toLowerCase();
-        if ("mock".equals(mode)) {
-            String mock = props.getProperty("api.mock.url");
-            if (mock != null && !mock.isEmpty()) {
-                return mock;
-            }
+        // For this project the sync URL is fixed to the production endpoint.
+        // Always return the configured production URL (or fallback to env var/API default).
+        String env = System.getenv("API_SYNC_URL");
+        if (env != null && !env.isEmpty()) {
+            return env;
         }
         return props.getProperty("api.sync.url");
+    }
+
+    /**
+     * Returns a list of sync URLs to try in order. Primary URL first, then any
+     * fallbacks configured via property `api.sync.fallbacks` (comma-separated).
+     */
+    public static java.util.List<String> getSyncUrls() {
+        java.util.List<String> urls = new java.util.ArrayList<>();
+        String primary = getSyncUrl();
+        if (primary != null && !primary.isEmpty()) {
+            urls.add(primary);
+        }
+        String fallbacks = props.getProperty("api.sync.fallbacks", "");
+        if (fallbacks != null && !fallbacks.isEmpty()) {
+            String[] parts = fallbacks.split(",");
+            for (String p : parts) {
+                String t = p.trim();
+                if (!t.isEmpty() && !urls.contains(t)) {
+                    urls.add(t);
+                }
+            }
+        }
+        return urls;
     }
 
     public static String getMode() {

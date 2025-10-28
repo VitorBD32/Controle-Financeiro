@@ -13,7 +13,7 @@ public class AESUtilTest {
         new java.security.SecureRandom().nextBytes(salt);
         SecretKeySpec key = AESUtil.deriveKey(password, salt, 10000, 256);
 
-        String plain = "Hello World";
+        String plain = "Criptografia simétrica aplicada!";
         String encrypted = AESUtil.encrypt(plain, key);
         String decrypted = AESUtil.decrypt(encrypted, key);
 

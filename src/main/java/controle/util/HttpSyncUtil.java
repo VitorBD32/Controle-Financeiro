@@ -18,6 +18,14 @@ public class HttpSyncUtil {
             attempt++;
             HttpURLConnection con = null;
             try {
+                // Diagnostic logging: print destination and a short payload preview
+                try {
+                    System.out.println("[HttpSyncUtil] Sending POST to: " + url);
+                    String preview = payload.length() > 200 ? payload.substring(0, 200) + "..." : payload;
+                    System.out.println("[HttpSyncUtil] Payload preview (first 200 chars): " + preview);
+                } catch (Throwable _t) {
+                    // ignore logging errors
+                }
                 URL obj = new URL(url);
                 con = (HttpURLConnection) obj.openConnection();
                 con.setRequestMethod("POST");
@@ -58,6 +66,15 @@ public class HttpSyncUtil {
                         }
                     }
                 }
+                // Diagnostic logging of response code and a short response preview
+                try {
+                    System.out.println("[HttpSyncUtil] Response code: " + responseCode);
+                    String respPreview = response.length() > 1000 ? response.substring(0, 1000) + "..." : response.toString();
+                    System.out.println("[HttpSyncUtil] Response preview: " + respPreview);
+                } catch (Throwable _t) {
+                    // ignore logging errors
+                }
+
                 if (responseCode >= 200 && responseCode < 300) {
                     return response.toString();
                 } else {

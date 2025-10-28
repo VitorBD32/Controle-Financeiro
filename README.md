@@ -9,3 +9,6 @@ Estrutura criada:
 
 
 
+
+
+python .\tools\mock_sync_server.py
