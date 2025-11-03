@@ -32,13 +32,13 @@ public class UsuarioDAOImpl implements UsuarioDAO {
 
     @Override
     public Usuario findById(int id) throws Exception {
-        String sql = "SELECT id_usuario, nome, email, senha FROM usuarios WHERE id_usuario = ?";
+        String sql = "SELECT id, nome, email, senha FROM usuarios WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     // do not expose password; set senha null
-                    return new Usuario(rs.getInt("id_usuario"), rs.getString("nome"), rs.getString("email"), null);
+                    return new Usuario(rs.getInt("id"), rs.getString("nome"), rs.getString("email"), null);
                 }
             }
         }
@@ -47,12 +47,12 @@ public class UsuarioDAOImpl implements UsuarioDAO {
 
     @Override
     public List<Usuario> findAll() throws Exception {
-        String sql = "SELECT id_usuario, nome, email, senha FROM usuarios";
+        String sql = "SELECT id, nome, email, senha FROM usuarios";
         List<Usuario> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 // do not include password in results
-                list.add(new Usuario(rs.getInt("id_usuario"), rs.getString("nome"), rs.getString("email"), null));
+                list.add(new Usuario(rs.getInt("id"), rs.getString("nome"), rs.getString("email"), null));
             }
         }
         return list;
@@ -60,14 +60,14 @@ public class UsuarioDAOImpl implements UsuarioDAO {
 
     @Override
     public boolean update(Usuario u) throws Exception {
-        String sql = "UPDATE usuarios SET nome = ?, email = ?, senha = ? WHERE id_usuario = ?";
+        String sql = "UPDATE usuarios SET nome = ?, email = ?, senha = ? WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, u.getNome());
             ps.setString(2, u.getEmail());
             // hash the password if provided; otherwise leave existing password
             if (u.getSenha() == null || u.getSenha().isEmpty()) {
                 // keep current password: read current hash and reuse
-                String currentSql = "SELECT senha FROM usuarios WHERE id_usuario = ?";
+                String currentSql = "SELECT senha FROM usuarios WHERE id = ?";
                 try (PreparedStatement ps2 = conn.prepareStatement(currentSql)) {
                     ps2.setInt(1, u.getId());
                     try (ResultSet rs = ps2.executeQuery()) {
@@ -88,7 +88,7 @@ public class UsuarioDAOImpl implements UsuarioDAO {
 
     @Override
     public boolean delete(int id) throws Exception {
-        String sql = "DELETE FROM usuarios WHERE id_usuario = ?";
+        String sql = "DELETE FROM usuarios WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;

@@ -14,10 +14,11 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public Categoria insert(Categoria c) throws Exception {
-        String sql = "INSERT INTO categorias (nome, valor, descricao) VALUES (?,?,?)";
+        // Ajustado para usar coluna 'tipo' (conforme schema atual: id, nome, tipo, descricao)
+        String sql = "INSERT INTO categorias (nome, tipo, descricao) VALUES (?,?,?)";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, c.getNome());
-            ps.setBigDecimal(2, c.getValor() != null ? c.getValor() : java.math.BigDecimal.ZERO);
+            ps.setString(2, c.getTipo());
             ps.setString(3, c.getDescricao());
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -31,15 +32,15 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public Categoria findById(int id) throws Exception {
-        String sql = "SELECT id_categoria, nome, valor, descricao FROM categorias WHERE id_categoria = ?";
+        String sql = "SELECT id, nome, tipo, descricao FROM categorias WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Categoria c = new Categoria();
-                    c.setId(rs.getInt("id_categoria"));
+                    c.setId(rs.getInt("id"));
                     c.setNome(rs.getString("nome"));
-                    c.setValor(rs.getBigDecimal("valor"));
+                    c.setTipo(rs.getString("tipo"));
                     c.setDescricao(rs.getString("descricao"));
                     return c;
                 }
@@ -50,14 +51,14 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public List<Categoria> findAll() throws Exception {
-        String sql = "SELECT id_categoria, nome, valor, descricao FROM categorias";
+        String sql = "SELECT id, nome, tipo, descricao FROM categorias";
         List<Categoria> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 Categoria c = new Categoria();
-                c.setId(rs.getInt("id_categoria"));
+                c.setId(rs.getInt("id"));
                 c.setNome(rs.getString("nome"));
-                c.setValor(rs.getBigDecimal("valor"));
+                c.setTipo(rs.getString("tipo"));
                 c.setDescricao(rs.getString("descricao"));
                 list.add(c);
             }
@@ -67,10 +68,10 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public boolean update(Categoria c) throws Exception {
-        String sql = "UPDATE categorias SET nome = ?, valor = ?, descricao = ? WHERE id_categoria = ?";
+        String sql = "UPDATE categorias SET nome = ?, tipo = ?, descricao = ? WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, c.getNome());
-            ps.setBigDecimal(2, c.getValor() != null ? c.getValor() : java.math.BigDecimal.ZERO);
+            ps.setString(2, c.getTipo());
             ps.setString(3, c.getDescricao());
             ps.setInt(4, c.getId());
             return ps.executeUpdate() > 0;
@@ -79,7 +80,7 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public boolean delete(int id) throws Exception {
-        String sql = "DELETE FROM categorias WHERE id_categoria = ?";
+        String sql = "DELETE FROM categorias WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;

@@ -1,7 +1,7 @@
 <?php
-// syncjava.php - Endpoint de sincronização com banco de dados MySQL
-// Para XAMPP local: copiar para C:\xampp\htdocs\syncjava.php
-// Para servidor remoto: ajustar credenciais DB e fazer upload para https://www.datse.com.br/dev/syncjava.php
+// syncjava2.php - Endpoint de sincronização com banco de dados MySQL (cópia de syncjava.php)
+// Para XAMPP local: copiar para C:\xampp\htdocs\syncjava2.php
+// Para servidor remoto: ajustar credenciais DB e fazer upload para https://www.datse.com.br/dev/syncjava2.php
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -107,14 +107,12 @@ if ($postedUser && $postedPass) {
 $encrypted_data = isset($_POST['encrypted_data']) ? $_POST['encrypted_data'] : null;
 $salt = isset($_POST['salt']) ? $_POST['salt'] : null;
 $client_id = isset($_POST['client_id']) ? $_POST['client_id'] : 'unknown';
-// If encrypted payload provided, attempt to decrypt using PBKDF2-HMAC-SHA256
-// (20000 iterations, 32-byte key) and AES-256-CBC with IV prefixed to ciphertext.
+
 if (!$auth_ok && $encrypted_data && strlen($encrypted_data) > 0) {
     try {
         if (!$salt) {
             throw new Exception('Missing salt for encrypted payload');
         }
-        // decode Base64 inputs
         $salt_raw = base64_decode($salt);
         $combined = base64_decode($encrypted_data);
         if ($salt_raw === false || $combined === false) {
@@ -125,36 +123,23 @@ if (!$auth_ok && $encrypted_data && strlen($encrypted_data) > 0) {
         }
         $iv = substr($combined, 0, 16);
         $ciphertext = substr($combined, 16);
-
-        // PBKDF2 parameters should match the Java client defaults.
         $iterations = 20000;
-        $keyLen = 32; // 256 bits
-
-        // Derive key (raw binary output)
+        $keyLen = 32;
         if (function_exists('hash_pbkdf2')) {
             $key = hash_pbkdf2('sha256', $SYNC_SECRET, $salt_raw, $iterations, $keyLen, true);
+        } else if (function_exists('openssl_pbkdf2')) {
+            $key = openssl_pbkdf2($SYNC_SECRET, $salt_raw, $keyLen, $iterations, 'sha256');
         } else {
-            // Fallback to openssl_pbkdf2 if available
-            if (function_exists('openssl_pbkdf2')) {
-                $key = openssl_pbkdf2($SYNC_SECRET, $salt_raw, $keyLen, $iterations, 'sha256');
-            } else {
-                throw new Exception('No PBKDF2 implementation available in PHP');
-            }
+            throw new Exception('No PBKDF2 implementation available in PHP');
         }
-
-        // Decrypt AES-256-CBC (raw binary)
         $plain = openssl_decrypt($ciphertext, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
         if ($plain === false) {
             throw new Exception('Decryption failed (bad key/iv or corrupted payload)');
         }
-
-        // Attempt to parse JSON payload produced by client
         $payload = json_decode($plain, true);
         if (!is_array($payload)) {
             throw new Exception('Decrypted payload is not valid JSON');
         }
-
-        // Try extract username/password from decrypted JSON
         $postedUser = null;
         $postedPass = null;
         foreach (array('nome','login','user','username','email','usuario') as $k) {
@@ -163,9 +148,7 @@ if (!$auth_ok && $encrypted_data && strlen($encrypted_data) > 0) {
         foreach (array('senha','password','pass') as $k) {
             if (isset($payload[$k]) && !empty($payload[$k])) { $postedPass = $payload[$k]; break; }
         }
-
         if ($postedUser && $postedPass) {
-            // Validate decrypted credentials against DB
             $stmt = $conn->prepare("SELECT id, nome, email, senha FROM usuarios WHERE nome = ? OR email = ? LIMIT 1");
             if ($stmt) {
                 $stmt->bind_param("ss", $postedUser, $postedUser);
@@ -182,11 +165,8 @@ if (!$auth_ok && $encrypted_data && strlen($encrypted_data) > 0) {
                 $stmt->close();
             }
         }
-
     } catch (Exception $e) {
-        // Keep $auth_ok false; include diagnostic in response for easier debugging on local test servers
         $errorMsg = $e->getMessage();
-        // append to received debug info below
         if (!isset($response_debug)) $response_debug = array();
         $response_debug['decrypt_error'] = $errorMsg;
     }
@@ -212,10 +192,15 @@ $response = array(
     'message' => $auth_ok ? 'Sincronização aceita' : 'Login invalido'
 );
 
-// if present add debug info (local testing only)
-if (isset($response_debug) && is_array($response_debug)) {
-    $response['debug'] = $response_debug;
-}
-
 http_response_code($auth_ok ? 200 : 401);
 echo json_encode($response);
+
+if (isset($response_debug) && is_array($response_debug)) {
+    // If debug info was collected, append it to the JSON output for local testing.
+    // Note: remove or disable in production to avoid leaking sensitive diagnostics.
+    // (We can't modify the already-sent JSON easily here without buffering; include header to help)
+    // For convenience, also write debug to Apache error log.
+    error_log('syncjava2 debug: ' . json_encode($response_debug));
+}
+
+?>

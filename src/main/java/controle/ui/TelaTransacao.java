@@ -220,17 +220,13 @@ public class TelaTransacao extends JFrame {
     private void createCategoria() {
         // show small dialog to collect name, optional value and description
         javax.swing.JTextField nomeField = new javax.swing.JTextField();
-        javax.swing.JFormattedTextField valorField;
-        java.text.NumberFormat nf = java.text.NumberFormat.getNumberInstance();
-        javax.swing.text.NumberFormatter formatter = new javax.swing.text.NumberFormatter(nf);
-        formatter.setValueClass(java.math.BigDecimal.class);
-        formatter.setAllowsInvalid(false);
-        valorField = new javax.swing.JFormattedTextField(formatter);
+        // trocar campo de valor por seleção de tipo (D/C) conforme schema de categorias
+        javax.swing.JComboBox<String> tipoCombo = new javax.swing.JComboBox<>(new String[]{"D", "C"});
         javax.swing.JTextField descField = new javax.swing.JTextField();
 
         Object[] inputs = new Object[]{
             "Nome:", nomeField,
-            "Valor (opcional):", valorField,
+            "Tipo (D/C):", tipoCombo,
             "Descrição (opcional):", descField
         };
         int result = javax.swing.JOptionPane.showConfirmDialog(this, inputs, "Nova Categoria", javax.swing.JOptionPane.OK_CANCEL_OPTION);
@@ -243,21 +239,17 @@ public class TelaTransacao extends JFrame {
             javax.swing.JOptionPane.showMessageDialog(this, "Nome inválido.");
             return;
         }
-        java.math.BigDecimal valor = null;
-        Object vobj = valorField.getValue();
-        if (vobj != null) {
-            try {
-                valor = new java.math.BigDecimal(vobj.toString());
-            } catch (Exception ex) {
-                valor = java.math.BigDecimal.ZERO;
-            }
+        String tipo = null;
+        Object tval = tipoCombo.getSelectedItem();
+        if (tval != null) {
+            tipo = tval.toString().trim().toUpperCase();
         }
         String desc = descField.getText();
 
         try {
             controle.model.Categoria c = new controle.model.Categoria();
             c.setNome(nome.trim());
-            c.setValor(valor);
+            c.setTipo(tipo != null && !tipo.isEmpty() ? tipo : "D");
             c.setDescricao(desc);
             catDao.insert(c);
             loadCombos();

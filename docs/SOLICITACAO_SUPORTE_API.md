@@ -134,4 +134,26 @@ VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com');
 
 ---
 
+## Ação local executada (Opção A)
+
+Para facilitar e acelerar a execução da Opção A, foram adicionados ao repositório os seguintes artefatos:
+
+- `docs/add_user_joao.sql` — exemplos de INSERT para cadastrar o usuário JOAO (variante MD5 e instruções para usar bcrypt).
+- `scripts/generate_add_user_sql.ps1` — script PowerShell que gera os comandos SQL; quando o PHP estiver disponível o script gera também o hash bcrypt (password_hash).
+
+Instruções rápidas para o administrador/professor:
+
+1. Caso o servidor use um esquema legado que espera MD5, basta executar o bloco MD5 em `docs/add_user_joao.sql` (ajuste nomes de tabela/colunas se necessário).
+2. Se o servidor utiliza bcrypt (recomendado), execute no servidor o script PHP abaixo para gerar o hash e cole no INSERT:
+
+  php -r "echo password_hash('1234', PASSWORD_BCRYPT);"
+
+  Ou execute `scripts/generate_add_user_sql.ps1` no host com PowerShell (o script tenta invocar `php` automaticamente quando disponível).
+
+3. Após aplicar o INSERT no banco do servidor, teste novamente a sincronização a partir do cliente.
+
+**Observação:** não é possível executar o SQL diretamente no servidor a partir deste repositório — é necessária ação do administrador/DBA que tenha acesso ao banco de produção.
+
+---
+
 **Aguardando retorno para prosseguir com a integração.**

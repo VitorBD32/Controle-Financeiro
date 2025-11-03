@@ -1,12 +1,11 @@
 package controle.model;
 
-import java.math.BigDecimal;
-
 public class Categoria {
 
     private int id;
     private String nome;
-    private BigDecimal valor;
+    // 'tipo' corresponde à coluna presente no banco (ex: 'D' ou 'C')
+    private String tipo;
     private String descricao;
 
     public Categoria() {
@@ -17,10 +16,10 @@ public class Categoria {
         this.nome = nome;
     }
 
-    public Categoria(int id, String nome, BigDecimal valor, String descricao) {
+    public Categoria(int id, String nome, String tipo, String descricao) {
         this.id = id;
         this.nome = nome;
-        this.valor = valor;
+        this.tipo = tipo;
         this.descricao = descricao;
     }
 
@@ -40,12 +39,12 @@ public class Categoria {
         this.nome = nome;
     }
 
-    public BigDecimal getValor() {
-        return valor;
+    public String getTipo() {
+        return tipo;
     }
 
-    public void setValor(BigDecimal valor) {
-        this.valor = valor;
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
     }
 
     public String getDescricao() {

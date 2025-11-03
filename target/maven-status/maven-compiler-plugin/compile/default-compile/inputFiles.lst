@@ -7,6 +7,8 @@ E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-f
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\ui\TelaTransacao.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\dao\UsuarioDAO.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\util\AESUtil.java
+E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\tools\NoAuthTester.java
+E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\util\DbAuthFix.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\tools\SyncRunner.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\Conexao.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\dao\TransacaoDAOImpl.java
@@ -15,6 +17,7 @@ E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-f
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\dao\TransacaoDAO.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\dao\CategoriaDAOImpl.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\config\DBConfig.java
+E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\tools\AuthTester.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\model\Usuario.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\tools\URLTester.java
 E:\CIÊNCIAS DA COMPUTAÇÃO\6º PERÍODO\DESENVOLVIMENTO DE SOFTWARE\controle-financeiro\src\main\java\controle\model\Transacao.java

@@ -23,7 +23,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public Transacao insert(Transacao t) throws Exception {
-        String sql = "INSERT INTO transacoes (id_usuario, id_categoria, tipo, valor, data, descricao) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO transacoes (usuario_id, categoria_id, tipo, valor, data, descricao) VALUES (?,?,?,?,?,?)";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, t.getIdUsuario());
             ps.setInt(2, t.getIdCategoria());
@@ -45,9 +45,37 @@ public class TransacaoDAOImpl implements TransacaoDAO {
         }
     }
 
+    /**
+     * Retorna transações que ainda não foram sincronizadas (sincronizado = 0).
+     * Se a coluna não existir, lança exceção para que o chamador trate o
+     * fallback.
+     */
+    public List<Transacao> findUnsynced() throws Exception {
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE sincronizado = 0 ORDER BY data DESC";
+        List<Transacao> list = new ArrayList<>();
+        try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(toTransacao(rs));
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Marca a transação como sincronizada (sincronizado = 1). Lança exceção se
+     * falhar.
+     */
+    public boolean markAsSynced(int id) throws Exception {
+        String sql = "UPDATE transacoes SET sincronizado = 1 WHERE id = ?";
+        try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     @Override
     public Transacao findById(int id) throws Exception {
-        String sql = "SELECT id_transacao, id_usuario, id_categoria, tipo, valor, data, descricao FROM transacoes WHERE id_transacao = ?";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -62,7 +90,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public List<Transacao> findAll() throws Exception {
-        String sql = "SELECT id_transacao, id_usuario, id_categoria, tipo, valor, data, descricao FROM transacoes ORDER BY data DESC";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes ORDER BY data DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -74,7 +102,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public List<Transacao> findByPeriodo(LocalDate inicio, LocalDate fim) throws Exception {
-        String sql = "SELECT id_transacao, id_usuario, id_categoria, tipo, valor, data, descricao FROM transacoes WHERE data BETWEEN ? AND ? ORDER BY data DESC";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE data BETWEEN ? AND ? ORDER BY data DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             Timestamp tInicio = inicio != null ? Timestamp.valueOf(inicio.atStartOfDay()) : null;
@@ -100,7 +128,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public boolean update(Transacao t) throws Exception {
-        String sql = "UPDATE transacoes SET id_usuario=?, id_categoria=?, tipo=?, valor=?, data=?, descricao=? WHERE id_transacao=?";
+        String sql = "UPDATE transacoes SET usuario_id=?, categoria_id=?, tipo=?, valor=?, data=?, descricao=? WHERE id=?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, t.getIdUsuario());
             ps.setInt(2, t.getIdCategoria());
@@ -119,7 +147,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public boolean delete(int id) throws Exception {
-        String sql = "DELETE FROM transacoes WHERE id_transacao = ?";
+        String sql = "DELETE FROM transacoes WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
@@ -128,9 +156,9 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     private Transacao toTransacao(ResultSet rs) throws Exception {
         Transacao t = new Transacao();
-        t.setId(rs.getInt("id_transacao"));
-        t.setIdUsuario(rs.getInt("id_usuario"));
-        t.setIdCategoria(rs.getInt("id_categoria"));
+        t.setId(rs.getInt("id"));
+        t.setIdUsuario(rs.getInt("usuario_id"));
+        t.setIdCategoria(rs.getInt("categoria_id"));
         t.setTipo(rs.getString("tipo"));
         t.setValor(rs.getBigDecimal("valor"));
         Timestamp ts = rs.getTimestamp("data");
@@ -149,16 +177,37 @@ public class TransacaoDAOImpl implements TransacaoDAO {
      * específico da implementação.
      */
     public String syncToAPI() {
-        List<Transacao> transacoes;
+        // tenta garantir que a coluna 'sincronizado' exista no banco;
+        // se não for possível criar, fallback será usado posteriormente
         try {
-            transacoes = findAll(); // ideal: filtrar apenas não sincronizadas se existir campo
+            ensureSyncColumnExists();
         } catch (Exception e) {
-            return "Erro ao obter transacoes: " + e.getMessage();
+            // log e continua: findUnsynced() pode falhar e o código fará fallback
+            System.out.println("[TransacaoDAOImpl] Aviso: não foi possível garantir coluna 'sincronizado': " + e.getMessage());
+        }
+
+        List<Transacao> transacoes;
+        boolean canMarkSynced = true;
+        try {
+            // tenta obter apenas as não-sincronizadas, se a coluna existir
+            transacoes = findUnsynced();
+        } catch (Exception e) {
+            // Se a coluna 'sincronizado' não existir, cair para comportamento antigo
+            canMarkSynced = false;
+            try {
+                transacoes = findAll();
+            } catch (Exception ex) {
+                return "Erro ao obter transacoes: " + ex.getMessage();
+            }
         }
 
         StringBuilder summary = new StringBuilder();
         int success = 0;
         int failed = 0;
+
+        if (transacoes == null || transacoes.isEmpty()) {
+            return "Nenhuma transação encontrada para sincronizar.\n" + String.format("Sucesso: %d, Falhas: %d\n", success, failed);
+        }
 
         for (Transacao t : transacoes) {
             try {
@@ -174,14 +223,14 @@ public class TransacaoDAOImpl implements TransacaoDAO {
                 String jsonData = String.format("{\"nome\":\"%s\",\"senha\":\"%s\",\"id\":%d,\"tipo\":\"%s\",\"valor\":%s,\"data\":\"%s\",\"descricao\":\"%s\"}",
                         nome, senha, t.getId(), t.getTipo(), valorStr, dataStr, descricao);
 
-                String payload = HttpSyncUtil.buildEncryptedPayload(jsonData, APIConfig.getSyncSecret());
                 java.util.List<String> urls = APIConfig.getSyncUrls();
                 String response = null;
                 Exception lastEx = null;
                 for (String u : urls) {
                     try {
                         System.out.println("[TransacaoDAOImpl] Trying sync URL: " + u + " for transacao id=" + t.getId());
-                        response = HttpSyncUtil.sendPost(u, payload);
+                        // tenta plain form com fallback para encrypted internamente
+                        response = HttpSyncUtil.sendWithPlainFallback(u, jsonData, APIConfig.getSyncSecret());
                         break; // success
                     } catch (Exception e) {
                         lastEx = e;
@@ -193,6 +242,14 @@ public class TransacaoDAOImpl implements TransacaoDAO {
                 if (response != null) {
                     summary.append("OK:").append(t.getId()).append(" ").append(response).append("\n");
                     success++;
+                    // tenta marcar como sincronizado se possível
+                    if (canMarkSynced) {
+                        try {
+                            markAsSynced(t.getId());
+                        } catch (Exception me) {
+                            summary.append("WARN: nao foi possivel marcar transacao " + t.getId() + " como sincronizada: " + me.getMessage() + "\n");
+                        }
+                    }
                 } else {
                     String errMsg = lastEx != null ? lastEx.getMessage() : "Unknown error";
                     summary.append("ERR:").append(t.getId()).append(" Exception: ").append(errMsg).append("\n");
@@ -207,6 +264,27 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
         summary.insert(0, String.format("Sincronizacao finalizada. Sucesso: %d, Falhas: %d\n", success, failed));
         return summary.toString();
+    }
+
+    /**
+     * Garante que a coluna 'sincronizado' exista na tabela transacoes. Se a
+     * coluna já existir, ignora o erro e retorna normalmente.
+     */
+    private void ensureSyncColumnExists() throws Exception {
+        String sql = "ALTER TABLE transacoes ADD COLUMN sincronizado TINYINT(1) DEFAULT 0";
+        try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.executeUpdate();
+            System.out.println("[TransacaoDAOImpl] Coluna 'sincronizado' criada com sucesso.");
+        } catch (java.sql.SQLException sqle) {
+            String msg = sqle.getMessage() != null ? sqle.getMessage().toLowerCase() : "";
+            // MySQL message when column exists: "Duplicate column name 'sincronizado'"
+            if (msg.contains("duplicate column") || msg.contains("já existe") || msg.contains("already exists")) {
+                // já existe, ignore
+                return;
+            }
+            // outras exceções repassam para o chamador
+            throw sqle;
+        }
     }
 
 }
