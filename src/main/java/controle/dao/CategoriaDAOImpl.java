@@ -14,11 +14,10 @@ public class CategoriaDAOImpl implements CategoriaDAO {
 
     @Override
     public Categoria insert(Categoria c) throws Exception {
-        // Ajustado para usar coluna 'tipo' (conforme schema atual: id, nome, tipo, descricao)
         String sql = "INSERT INTO categorias (nome, tipo, descricao) VALUES (?,?,?)";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, c.getNome());
-            ps.setString(2, c.getTipo());
+            ps.setString(2, c.getTipo() != null ? c.getTipo() : "D");
             ps.setString(3, c.getDescricao());
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -71,7 +70,7 @@ public class CategoriaDAOImpl implements CategoriaDAO {
         String sql = "UPDATE categorias SET nome = ?, tipo = ?, descricao = ? WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, c.getNome());
-            ps.setString(2, c.getTipo());
+            ps.setString(2, c.getTipo() != null ? c.getTipo() : "D");
             ps.setString(3, c.getDescricao());
             ps.setInt(4, c.getId());
             return ps.executeUpdate() > 0;
