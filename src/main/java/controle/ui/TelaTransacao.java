@@ -124,11 +124,13 @@ public class TelaTransacao extends JFrame {
         JButton btnSalvar = new JButton("Salvar");
         JButton btnExcluir = new JButton("Excluir");
         JButton btnRefresh = new JButton("Refresh");
+        JButton btnAPI = new JButton("🌐 API");
         actions.add(btnNovo);
         actions.add(btnSalvar);
         actions.add(btnExcluir);
         actions.add(btnRefresh);
         actions.add(btnSync);
+        actions.add(btnAPI);
         add(actions, BorderLayout.SOUTH);
 
         // actions
@@ -138,6 +140,7 @@ public class TelaTransacao extends JFrame {
         btnExcluir.addActionListener(e -> deleteSelected());
         btnNovaCategoria.addActionListener(e -> createCategoria());
         btnSync.addActionListener(e -> syncData());
+        btnAPI.addActionListener(e -> abrirTelaAPI());
 
         loadCombos();
         loadData();
@@ -450,5 +453,10 @@ public class TelaTransacao extends JFrame {
             }
         };
         worker.execute();
+    }
+
+    private void abrirTelaAPI() {
+        TelaAPIConexao telaAPI = new TelaAPIConexao();
+        telaAPI.setVisible(true);
     }
 }

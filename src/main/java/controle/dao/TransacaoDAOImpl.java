@@ -23,7 +23,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public Transacao insert(Transacao t) throws Exception {
-        String sql = "INSERT INTO transacoes (usuario_id, categoria_id, tipo, valor, data, descricao) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO transacoes (usuario_id, categoria_id, tipo, valor, data_movimento, descricao) VALUES (?,?,?,?,?,?)";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, t.getIdUsuario());
             ps.setInt(2, t.getIdCategoria());
@@ -51,7 +51,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
      * fallback.
      */
     public List<Transacao> findUnsynced() throws Exception {
-        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE sincronizado = 0 ORDER BY data DESC";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data_movimento, descricao FROM transacoes WHERE sincronizado = 0 ORDER BY data_movimento DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -75,7 +75,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public Transacao findById(int id) throws Exception {
-        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE id = ?";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data_movimento, descricao FROM transacoes WHERE id = ?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -90,7 +90,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public List<Transacao> findAll() throws Exception {
-        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes ORDER BY data DESC";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data_movimento, descricao FROM transacoes ORDER BY data_movimento DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -102,7 +102,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public List<Transacao> findByPeriodo(LocalDate inicio, LocalDate fim) throws Exception {
-        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data, descricao FROM transacoes WHERE data BETWEEN ? AND ? ORDER BY data DESC";
+        String sql = "SELECT id, usuario_id, categoria_id, tipo, valor, data_movimento, descricao FROM transacoes WHERE data_movimento BETWEEN ? AND ? ORDER BY data_movimento DESC";
         List<Transacao> list = new ArrayList<>();
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             Timestamp tInicio = inicio != null ? Timestamp.valueOf(inicio.atStartOfDay()) : null;
@@ -128,7 +128,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
 
     @Override
     public boolean update(Transacao t) throws Exception {
-        String sql = "UPDATE transacoes SET usuario_id=?, categoria_id=?, tipo=?, valor=?, data=?, descricao=? WHERE id=?";
+        String sql = "UPDATE transacoes SET usuario_id=?, categoria_id=?, tipo=?, valor=?, data_movimento=?, descricao=? WHERE id=?";
         try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, t.getIdUsuario());
             ps.setInt(2, t.getIdCategoria());
@@ -161,7 +161,7 @@ public class TransacaoDAOImpl implements TransacaoDAO {
         t.setIdCategoria(rs.getInt("categoria_id"));
         t.setTipo(rs.getString("tipo"));
         t.setValor(rs.getBigDecimal("valor"));
-        Timestamp ts = rs.getTimestamp("data");
+        Timestamp ts = rs.getTimestamp("data_movimento");
         if (ts != null) {
             t.setData(ts.toLocalDateTime());
         } else {
