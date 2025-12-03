@@ -2,6 +2,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 
 // Imports para integração com API PIX
 import br.uespi.acessoapi.pagamentoHTTP;
@@ -13,6 +18,7 @@ import br.uespi.pessoas.pessoa;
 /**
  * Tela de Cadastro e Pagamento PIX
  * Integrada com a API de pagamentos usando as classes do pacote br.uespi
+ * INCLUI: Exibição do QR Code PIX para pagamento
  */
 public class TelaPagamentoPIX extends JFrame {
 
@@ -27,6 +33,10 @@ public class TelaPagamentoPIX extends JFrame {
     // Área de resultado
     private JTextArea txtResultado;
     
+    // Painel do QR Code PIX
+    private JLabel lblQRCode;
+    private JPanel panelQRCode;
+    
     // Botões
     private JButton btnEmitir;
     private JButton btnImprimir;
@@ -34,6 +44,9 @@ public class TelaPagamentoPIX extends JFrame {
     
     // URL da API (endpoint correto sem o "2")
     private static final String API_URL = "http://www.datse.com.br/dev/syncjava.php";
+    
+    // Caminho da imagem do QR Code
+    private static final String QR_CODE_PATH = "resources/images/qrcode_pix.png";
 
     public TelaPagamentoPIX() {
         super("Cadastro - Pagamento PIX");
@@ -74,6 +87,31 @@ public class TelaPagamentoPIX extends JFrame {
         valorPanel.add(btnEmitir);
         
         formPanel.add(valorPanel);
+
+        // Painel do QR Code PIX (inicialmente oculto)
+        panelQRCode = new JPanel(new BorderLayout());
+        panelQRCode.setBorder(BorderFactory.createTitledBorder("📱 QR Code PIX - Escaneie para Pagar"));
+        panelQRCode.setBackground(Color.WHITE);
+        lblQRCode = new JLabel("", SwingConstants.CENTER);
+        lblQRCode.setPreferredSize(new Dimension(200, 200));
+        panelQRCode.add(lblQRCode, BorderLayout.CENTER);
+        
+        JLabel lblInstrucao = new JLabel("<html><center>Abra o app do seu banco<br>e escaneie o QR Code acima</center></html>", SwingConstants.CENTER);
+        lblInstrucao.setForeground(new Color(0, 100, 0));
+        panelQRCode.add(lblInstrucao, BorderLayout.SOUTH);
+        
+        panelQRCode.setVisible(false);
+        formPanel.add(panelQRCode);
+
+        // Listener para mostrar/ocultar QR Code baseado no tipo de pagamento
+        cmbTipoPagamento.addActionListener(e -> {
+            String tipo = (String) cmbTipoPagamento.getSelectedItem();
+            panelQRCode.setVisible("PIX".equals(tipo));
+            if ("PIX".equals(tipo)) {
+                carregarQRCode();
+            }
+            pack();
+        });
 
         // Área de resultado
         txtResultado = new JTextArea(5, 30);
@@ -117,6 +155,47 @@ public class TelaPagamentoPIX extends JFrame {
         panel.add(field);
         panel.add(Box.createVerticalStrut(5));
         return panel;
+    }
+
+    /**
+     * Carrega e exibe o QR Code PIX na tela
+     */
+    private void carregarQRCode() {
+        try {
+            // Tenta carregar a imagem do QR Code
+            File qrFile = new File(QR_CODE_PATH);
+            BufferedImage qrImage = null;
+            
+            if (qrFile.exists()) {
+                qrImage = ImageIO.read(qrFile);
+                System.out.println("✅ QR Code carregado de: " + qrFile.getAbsolutePath());
+            } else {
+                // Tenta carregar do classpath
+                InputStream is = getClass().getResourceAsStream("/images/qrcode_pix.png");
+                if (is != null) {
+                    qrImage = ImageIO.read(is);
+                    System.out.println("✅ QR Code carregado do classpath");
+                }
+            }
+            
+            if (qrImage != null) {
+                // Redimensiona a imagem para caber no painel
+                Image scaledImage = qrImage.getScaledInstance(180, 180, Image.SCALE_SMOOTH);
+                lblQRCode.setIcon(new ImageIcon(scaledImage));
+                lblQRCode.setText("");
+            } else {
+                // Se não encontrar a imagem, exibe mensagem
+                lblQRCode.setIcon(null);
+                lblQRCode.setText("<html><center><b>QR Code PIX</b><br><br>" +
+                    "Coloque a imagem do QR Code em:<br>" +
+                    "<i>resources/images/qrcode_pix.png</i></center></html>");
+                System.out.println("⚠️ QR Code não encontrado em: " + qrFile.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            lblQRCode.setIcon(null);
+            lblQRCode.setText("<html><center>Erro ao carregar QR Code:<br>" + e.getMessage() + "</center></html>");
+            System.err.println("❌ Erro ao carregar QR Code: " + e.getMessage());
+        }
     }
 
     /**

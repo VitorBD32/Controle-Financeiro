@@ -125,12 +125,14 @@ public class TelaTransacao extends JFrame {
         JButton btnExcluir = new JButton("Excluir");
         JButton btnRefresh = new JButton("Refresh");
         JButton btnAPI = new JButton("🌐 API");
+        JButton btnPIX = new JButton("💳 PIX");
         actions.add(btnNovo);
         actions.add(btnSalvar);
         actions.add(btnExcluir);
         actions.add(btnRefresh);
         actions.add(btnSync);
         actions.add(btnAPI);
+        actions.add(btnPIX);
         add(actions, BorderLayout.SOUTH);
 
         // actions
@@ -141,6 +143,7 @@ public class TelaTransacao extends JFrame {
         btnNovaCategoria.addActionListener(e -> createCategoria());
         btnSync.addActionListener(e -> syncData());
         btnAPI.addActionListener(e -> abrirTelaAPI());
+        btnPIX.addActionListener(e -> abrirTelaPIX());
 
         loadCombos();
         loadData();
@@ -457,5 +460,10 @@ public class TelaTransacao extends JFrame {
     private void abrirTelaAPI() {
         TelaAPIConexao telaAPI = new TelaAPIConexao();
         telaAPI.setVisible(true);
+    }
+
+    private void abrirTelaPIX() {
+        TelaPagamentoPIX telaPIX = new TelaPagamentoPIX();
+        telaPIX.setVisible(true);
     }
 }
