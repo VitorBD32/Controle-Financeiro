@@ -23,9 +23,14 @@ public class telaLogin extends JFrame{
  private JLabel llogin, lsenha, lretorno;
 
  private static final String ALGORITHM = "AES";
+ private static final String API_URL = "http://www.datse.com.br/dev/syncjava.php";
+ 
+ // Armazena credenciais para passar para próxima tela
+ private String usuarioLogado = null;
+ private String senhaLogado = null;
  
  public telaLogin() throws Exception {
-  super("Cadastrar");
+  super("Login - Sistema PIX");
   setLayout(new FlowLayout());
   this.addComponentes();
  } 
@@ -43,7 +48,7 @@ public class telaLogin extends JFrame{
   tsenha = new JTextField(20);
   add(tsenha);
   
-  lretorno = new JLabel("lretorno:");
+  lretorno = new JLabel("Retorno:");
   add(lretorno);
   
   tretorno = new JTextField(20);
@@ -61,11 +66,10 @@ public class telaLogin extends JFrame{
     public void actionPerformed(ActionEvent evento) {
      if(evento.getSource() == logar) {
        try {
+        String usuario = tlogin.getText();
+        String senha = tsenha.getText();
 
-        String key = "1234567890123456";
-        String encryptedString = encrypt(tsenha.getText(), key);
-
-         ClienteHTTP Conexao = new ClienteHTTP(tlogin.getText(),encryptedString,"http://www.datse.com.br/dev/syncjava.php");
+         ClienteHTTP Conexao = new ClienteHTTP(usuario, senha, API_URL);
 	 String ret = Conexao.conecta();
 	 tretorno.setText(ret);
          
@@ -73,25 +77,28 @@ public class telaLogin extends JFrame{
          System.out.println("============================================");
          System.out.println("   CONEXÃO COM API - RESPOSTA");
          System.out.println("============================================");
-         System.out.println("[INFO] Usuário: " + tlogin.getText());
+         System.out.println("[INFO] Usuário: " + usuario);
          System.out.println("[INFO] Código de retorno: " + Conexao.codretorno);
          System.out.println("[INFO] Resposta da API: " + ret);
          
-         // Trata o JSON usando trataJSON
-         if (ret != null && !ret.isEmpty()) {
-           try {
-             trataJSON tratador = new trataJSON(ret);
-             pessoa resultado = tratador.tratarString();
-             System.out.println("\n[OK] JSON processado com sucesso!");
-             System.out.println("  - ID: " + resultado.getId());
-             System.out.println("  - Modo: " + resultado.getModo());
-             System.out.println("  - Valor: " + resultado.getValor());
-             System.out.println("  - Mensagem: " + resultado.getRetmsg());
-           } catch (Exception jsonEx) {
-             System.out.println("[INFO] Resposta JSON (raw): " + ret);
-           }
+         // Verifica se login foi bem-sucedido
+         boolean loginValido = verificarLogin(ret);
+         
+         if (loginValido) {
+             usuarioLogado = usuario;
+             senhaLogado = senha;
+             
+             System.out.println("\n[OK] LOGIN AUTORIZADO!");
+             System.out.println("[INFO] Abrindo tela de pagamento PIX...");
+             System.out.println("============================================\n");
+             
+             // Abre a tela de pagamento PIX
+             abrirTelaPagamento();
+         } else {
+             System.out.println("\n[ERRO] LOGIN NEGADO!");
+             System.out.println("[INFO] Verifique suas credenciais.");
+             System.out.println("============================================\n");
          }
-         System.out.println("============================================\n");
          
        } catch (Exception e) {
          System.err.println("[ERRO] Falha na conexão: " + e.getMessage());
@@ -102,6 +109,46 @@ public class telaLogin extends JFrame{
    }
   );
   add(logar);
+ }
+ 
+ /**
+  * Verifica se a resposta indica login válido
+  */
+ private boolean verificarLogin(String resposta) {
+     if (resposta == null || resposta.isEmpty()) {
+         return false;
+     }
+     String respostaLower = resposta.toLowerCase();
+     // Verifica mensagens de sucesso
+     if (respostaLower.contains("sucesso") || respostaLower.contains("realizado")) {
+         return true;
+     }
+     // Verifica mensagens de erro
+     if (respostaLower.contains("invalido") || respostaLower.contains("erro") || respostaLower.contains("negado")) {
+         return false;
+     }
+     return false;
+ }
+ 
+ /**
+  * Abre a tela de pagamento PIX após login bem-sucedido
+  */
+ private void abrirTelaPagamento() {
+     this.setVisible(false);
+     TelaPagamentoPIXAuth telaPagamento = new TelaPagamentoPIXAuth(usuarioLogado, senhaLogado, this);
+     telaPagamento.setVisible(true);
+ }
+ 
+ /**
+  * Método para reexibir a tela de login (chamado ao fazer logout)
+  */
+ public void mostrarLogin() {
+     usuarioLogado = null;
+     senhaLogado = null;
+     tlogin.setText("");
+     tsenha.setText("");
+     tretorno.setText("");
+     this.setVisible(true);
  }
  
  public void limparOnClick() {
@@ -125,6 +172,26 @@ public class telaLogin extends JFrame{
     cipher.init(Cipher.ENCRYPT_MODE, secretKey);
     byte[] encryptedData = cipher.doFinal(data.getBytes());
     return Base64.getEncoder().encodeToString(encryptedData);
+ }
+ 
+ public static void main(String[] args) {
+     try {
+         telaLogin tela = new telaLogin();
+         tela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+         tela.setSize(280, 200);
+         tela.setLocationRelativeTo(null);
+         tela.setVisible(true);
+         
+         System.out.println("============================================");
+         System.out.println("   SISTEMA DE PAGAMENTO PIX");
+         System.out.println("============================================");
+         System.out.println("[INFO] Tela de login iniciada");
+         System.out.println("[INFO] API URL: http://www.datse.com.br/dev/syncjava.php");
+         System.out.println("[INFO] Aguardando autenticação...");
+         System.out.println("============================================\n");
+     } catch (Exception e) {
+         System.err.println("Erro ao iniciar: " + e.getMessage());
+     }
  }
 
 }

@@ -33,6 +33,7 @@ import javax.swing.table.TableRowSorter;
 import controle.dao.UsuarioDAO;
 import controle.dao.UsuarioDAOImpl;
 import controle.model.Usuario;
+import controle.util.APISync;
 
 public class TelaUsuario extends JFrame {
 
@@ -55,6 +56,7 @@ public class TelaUsuario extends JFrame {
     private final JButton btnAtualizar = new JButton("Atualizar");
     private final JButton btnExcluir = new JButton("Excluir");
     private final JButton btnTransacoes = new JButton("Transações");
+    private final JButton btnSync = new JButton("Sincronizar API");
     private final JLabel lblStatus = new JLabel(" ");
 
     // simple email validation
@@ -120,6 +122,7 @@ public class TelaUsuario extends JFrame {
         actions.add(btnAtualizar);
         actions.add(btnExcluir);
         actions.add(btnTransacoes);
+        actions.add(btnSync);
 
         JPanel south = new JPanel(new BorderLayout());
         south.add(actions, BorderLayout.NORTH);
@@ -141,6 +144,7 @@ public class TelaUsuario extends JFrame {
             TelaTransacao tt = new TelaTransacao();
             tt.setVisible(true);
         });
+        btnSync.addActionListener(e -> onSyncAPI());
 
         // keyboard shortcuts
         getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK), "save");
@@ -356,6 +360,72 @@ public class TelaUsuario extends JFrame {
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Erro ao carregar usuários: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void onSyncAPI() {
+        btnSync.setEnabled(false);
+        btnSync.setText("Sincronizando...");
+        lblStatus.setText("Conectando à API...");
+
+        javax.swing.SwingWorker<String, Void> worker = new javax.swing.SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                StringBuilder result = new StringBuilder();
+                try {
+                    // Testar conexão primeiro
+                    String testeResp = APISync.verificarLogin(
+                        controle.config.APIConfig.getAuthUser(),
+                        controle.config.APIConfig.getAuthPassword()
+                    );
+                    result.append("=== TESTE DE CONEXÃO ===\n");
+                    result.append("Resposta: ").append(testeResp).append("\n\n");
+
+                    // Sincronizar usuários selecionado ou todos
+                    int row = table.getSelectedRow();
+                    if (row >= 0) {
+                        // Sincronizar apenas o selecionado
+                        int modelRow = table.convertRowIndexToModel(row);
+                        String nome = model.getValueAt(modelRow, 1).toString();
+                        String email = model.getValueAt(modelRow, 2).toString();
+                        
+                        result.append("=== SINCRONIZANDO USUÁRIO ===\n");
+                        result.append("Nome: ").append(nome).append("\n");
+                        result.append("Email: ").append(email).append("\n");
+                        
+                        String resp = APISync.sincronizarUsuario(nome, email, "");
+                        result.append("Resposta: ").append(resp).append("\n");
+                    } else {
+                        result.append("Nenhum usuário selecionado.\n");
+                        result.append("Selecione um usuário para sincronizar.\n");
+                    }
+                } catch (Exception ex) {
+                    result.append("ERRO: ").append(ex.getMessage()).append("\n");
+                }
+                return result.toString();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String result = get();
+                    // Exibir resultado em área rolável
+                    javax.swing.JTextArea ta = new javax.swing.JTextArea(result);
+                    ta.setEditable(false);
+                    ta.setLineWrap(true);
+                    ta.setWrapStyleWord(true);
+                    javax.swing.JScrollPane sp = new javax.swing.JScrollPane(ta);
+                    sp.setPreferredSize(new java.awt.Dimension(500, 300));
+                    JOptionPane.showMessageDialog(TelaUsuario.this, sp, "Resultado da Sincronização", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(TelaUsuario.this, "Erro: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    btnSync.setEnabled(true);
+                    btnSync.setText("Sincronizar API");
+                    lblStatus.setText("Pronto.");
+                }
+            }
+        };
+        worker.execute();
     }
 
     public static void main(String[] args) {

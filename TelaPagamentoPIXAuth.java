@@ -42,14 +42,31 @@ public class TelaPagamentoPIXAuth extends JFrame {
     private String usuarioLogado;
     private String senhaUsuario;
     
-    // Referência para a tela de login
-    private TelaLoginPIX telaLogin;
+    // Referência para a tela de login (usando Object para aceitar ambos os tipos)
+    private Object telaLoginRef;
 
     public TelaPagamentoPIXAuth(String usuario, String senha, TelaLoginPIX loginFrame) {
         super("Pagamento PIX - Usuário: " + usuario);
         this.usuarioLogado = usuario;
         this.senhaUsuario = senha;
-        this.telaLogin = loginFrame;
+        this.telaLoginRef = loginFrame;
+        initComponents();
+        
+        // Ao fechar, volta para o login
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                voltarParaLogin();
+            }
+        });
+    }
+    
+    // Construtor para telaLogin (sua UI/UX)
+    public TelaPagamentoPIXAuth(String usuario, String senha, telaLogin loginFrame) {
+        super("Pagamento PIX - Usuário: " + usuario);
+        this.usuarioLogado = usuario;
+        this.senhaUsuario = senha;
+        this.telaLoginRef = loginFrame;
         initComponents();
         
         // Ao fechar, volta para o login
@@ -393,8 +410,13 @@ public class TelaPagamentoPIXAuth extends JFrame {
             System.out.println("============================================\n");
             
             this.dispose();
-            if (telaLogin != null) {
-                telaLogin.mostrarLogin();
+            if (telaLoginRef != null) {
+                // Verifica qual tipo de tela de login e chama o método apropriado
+                if (telaLoginRef instanceof TelaLoginPIX) {
+                    ((TelaLoginPIX) telaLoginRef).mostrarLogin();
+                } else if (telaLoginRef instanceof telaLogin) {
+                    ((telaLogin) telaLoginRef).mostrarLogin();
+                }
             } else {
                 System.exit(0);
             }
