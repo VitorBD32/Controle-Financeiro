@@ -426,7 +426,8 @@ public class TelaTransacao extends JFrame {
                     // Se detectar problema de conexão, mostrar instrução útil
                     if (result != null && (result.contains("ConnectException") || result.toLowerCase().contains("connection refused") || result.toLowerCase().contains("não foi possível conectar"))) {
                         String msg = "Não foi possível conectar ao servidor de sincronização.\n"
-                                + "Verifique se o servidor de sincronização (http://www.datse.com.br/dev/syncjava2.php) está acessível e se a URL está correta.\n"
+                                + "Verifique se o servidor (http://www.datse.com.br/dev/syncjava.php) está acessível.\n"
+                                + "Content-Type: application/x-www-form-urlencoded\n"
                                 + "Detalhes: " + result;
                         javax.swing.JOptionPane.showMessageDialog(TelaTransacao.this, msg, "Erro na sincronização", javax.swing.JOptionPane.ERROR_MESSAGE);
                     } else {

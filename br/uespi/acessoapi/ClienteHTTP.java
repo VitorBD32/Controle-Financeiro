@@ -30,10 +30,11 @@ public class ClienteHTTP {
         	URL obj = new URL(url);
 		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
 
-		// Set request method
+		// Set request method - HTTP POST
 		con.setRequestMethod("POST");
 
-		// Set headers (optional)
+		// Set headers - application/x-www-form-urlencoded
+		con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 		con.setRequestProperty("User-Agent", "Mozilla/5.0");
 		con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
 
