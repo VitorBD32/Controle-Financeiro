@@ -47,6 +47,7 @@ public class TelaTransacao extends JFrame {
     };
 
     private final JTable table = new JTable(model);
+    private final JLabel lblRole = new JLabel(" ");
 
     private final JComboBox<Usuario> cbUsuario = new JComboBox<>();
     private final JComboBox<Categoria> cbCategoria = new JComboBox<>();
@@ -55,6 +56,10 @@ public class TelaTransacao extends JFrame {
     private final JSpinner spData;
     private final JFormattedTextField tfDescricao = new JFormattedTextField();
     private final JButton btnSync = new JButton("Sincronizar");
+    private JButton btnGrafico;
+    private JButton btnAdminSettings;
+    private JButton btnExportPdf;
+    private Usuario loggedUser = null;
 
     public TelaTransacao() {
         super("Transações");
@@ -114,6 +119,10 @@ public class TelaTransacao extends JFrame {
         form.add(tfDescricao, c);
 
         add(form, BorderLayout.NORTH);
+        // Header area for role and other controls
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        header.add(lblRole);
+        add(header, BorderLayout.BEFORE_FIRST_LINE);
 
         // table
         add(new JScrollPane(table), BorderLayout.CENTER);
@@ -126,6 +135,9 @@ public class TelaTransacao extends JFrame {
         JButton btnRefresh = new JButton("Refresh");
         JButton btnAPI = new JButton("🌐 API");
         JButton btnPIX = new JButton("💳 PIX");
+        btnGrafico = new JButton("📈 Gráficos");
+        btnAdminSettings = new JButton("⚙️ Admin");
+        btnExportPdf = new JButton("📁 Exportar PDF");
         actions.add(btnNovo);
         actions.add(btnSalvar);
         actions.add(btnExcluir);
@@ -133,6 +145,9 @@ public class TelaTransacao extends JFrame {
         actions.add(btnSync);
         actions.add(btnAPI);
         actions.add(btnPIX);
+        actions.add(btnGrafico);
+        actions.add(btnAdminSettings);
+        actions.add(btnExportPdf);
         add(actions, BorderLayout.SOUTH);
 
         // actions
@@ -144,12 +159,76 @@ public class TelaTransacao extends JFrame {
         btnSync.addActionListener(e -> syncData());
         btnAPI.addActionListener(e -> abrirTelaAPI());
         btnPIX.addActionListener(e -> abrirTelaPIX());
+        btnGrafico.addActionListener(e -> abrirTelaGrafico());
+        btnAdminSettings.addActionListener(e -> abrirAdminSettings());
+        btnExportPdf.addActionListener(e -> exportarTransacoesPDF());
 
         loadCombos();
         loadData();
+        // Ensure grafico button enabled only for admin users
+        cbUsuario.addActionListener(e -> toggleGraficoButton(btnGrafico));
+        cbUsuario.addActionListener(e -> btnAdminSettings.setEnabled(loggedUser != null && loggedUser.isAdmin()));
+        cbUsuario.addActionListener(e -> btnExportPdf.setEnabled(loggedUser != null && loggedUser.isAdmin()));
+        cbUsuario.addActionListener(e -> updateRoleLabel());
+        updateRoleLabel();
+        toggleGraficoButton(btnGrafico);
+        // ensure export button toggled like grafico
+        btnExportPdf.setEnabled(false);
 
         setSize(900, 500);
         setLocationRelativeTo(null);
+    }
+
+    public TelaTransacao(Usuario loggedUser) {
+        this();
+        this.loggedUser = loggedUser;
+        // pre-select the logged-in user in combo
+        if (loggedUser != null) {
+            for (int i = 0; i < cbUsuario.getItemCount(); i++) {
+                Usuario it = cbUsuario.getItemAt(i);
+                if (it != null && it.getId() == loggedUser.getId()) {
+                    cbUsuario.setSelectedIndex(i);
+                    break;
+                }
+            }
+            // enable graph button if user is admin
+            if (loggedUser.isAdmin()) {
+                btnGrafico.setEnabled(true);
+                btnExportPdf.setEnabled(true);
+            }
+        }
+    }
+
+    private void toggleGraficoButton(JButton btnGrafico) {
+        try {
+            Usuario u = (Usuario) cbUsuario.getSelectedItem();
+            btnGrafico.setEnabled(u != null && u.isAdmin());
+        } catch (Exception ex) {
+            btnGrafico.setEnabled(false);
+        }
+    }
+
+    private void abrirTelaGrafico() {
+        SwingUtilities.invokeLater(() -> new TelaGrafico().setVisible(true));
+    }
+
+    private void abrirAdminSettings() {
+        SwingUtilities.invokeLater(() -> new TelaAdminSettings().setVisible(true));
+    }
+
+    private void updateRoleLabel() {
+        try {
+            Usuario u = (Usuario) cbUsuario.getSelectedItem();
+            if (u == null) {
+                lblRole.setText(" ");
+            } else if (u.isAdmin()) {
+                lblRole.setText("Modo: ADMIN");
+            } else {
+                lblRole.setText("Modo: Usuário");
+            }
+        } catch (Exception ex) {
+            lblRole.setText(" ");
+        }
     }
 
     private void loadCombos() {
@@ -459,12 +538,70 @@ public class TelaTransacao extends JFrame {
     }
 
     private void abrirTelaAPI() {
-        TelaAPIConexao telaAPI = new TelaAPIConexao();
+        TelaAPIConexao telaAPI = new TelaAPIConexao(this.loggedUser);
         telaAPI.setVisible(true);
     }
 
     private void abrirTelaPIX() {
         TelaPagamentoPIX telaPIX = new TelaPagamentoPIX();
         telaPIX.setVisible(true);
+    }
+
+    private void exportarTransacoesPDF() {
+        // Only allow if selected user is admin
+        Usuario u = (Usuario) cbUsuario.getSelectedItem();
+        if (u == null) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Selecione um usuário.");
+            return;
+        }
+        if (!u.isAdmin()) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Apenas administradores podem exportar as transações.");
+            return;
+        }
+
+        // Collect transactions to export for the selected user (same logic as sync: filter by user)
+        List<Transacao> todas;
+        try {
+            todas = transDao.findAll();
+        } catch (Exception ex) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Erro ao buscar transações: " + ex.getMessage());
+            return;
+        }
+        List<Transacao> fil = new java.util.ArrayList<>();
+        for (Transacao t : todas) {
+            if (t.getIdUsuario() == u.getId()) {
+                fil.add(t);
+            }
+        }
+
+        if (fil.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Nenhuma transação encontrada para o usuário selecionado.");
+            return;
+        }
+
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        chooser.setDialogTitle("Salvar transações como PDF");
+        chooser.setSelectedFile(new java.io.File("transacoes_" + System.currentTimeMillis() + ".pdf"));
+        int r = chooser.showSaveDialog(this);
+        if (r != javax.swing.JFileChooser.APPROVE_OPTION) return;
+        java.io.File file = chooser.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".pdf")) file = new java.io.File(file.getAbsolutePath() + ".pdf");
+
+        String taxHeader = "";
+        try {
+            controle.dao.ConfigDAO cfg = new controle.dao.ConfigDAOImpl();
+            String t1 = cfg.get("tax_ibs"); if (t1 != null) taxHeader += "IBS: " + t1 + "% ";
+            String t2 = cfg.get("tax_cbs"); if (t2 != null) taxHeader += "CBS: " + t2 + "% ";
+            String t3 = cfg.get("tax_service"); if (t3 != null) taxHeader += "Service: " + t3 + "%";
+        } catch (Exception ex) {
+            // ignore
+        }
+
+        try {
+            controle.util.PDFExporter.saveTransactionsAsPDF(file, fil, u, taxHeader);
+            javax.swing.JOptionPane.showMessageDialog(this, "Transações exportadas: " + file.getAbsolutePath());
+        } catch (Exception ex) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Erro ao exportar PDF: " + ex.getMessage());
+        }
     }
 }

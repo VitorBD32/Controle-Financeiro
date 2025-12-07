@@ -6,61 +6,96 @@ function Start-Build {
     if (Get-Command mvn -ErrorAction SilentlyContinue) {
         Write-Host "Maven encontrado. Executando mvn clean compile exec:java..."
         mvn clean compile
-        # use the mainClass configured in pom.xml; if needed, fallback to passing property before goal
         if (Get-Command mvn -ErrorAction SilentlyContinue) {
-            Write-Host "Executando mvn exec do plugin (coordenadas explícitas) para evitar ambiguidade..."
-            # Evita que o PowerShell tente interpretar tokens que começam com '-' como parâmetros do próprio shell.
-            # Usa Start-Process com ArgumentList para passar os argumentos literalmente.
+            Write-Host "Executando mvn exec do plugin..."
             $args = @('-Dexec.mainClass=controle.Main', 'org.codehaus.mojo:exec-maven-plugin:3.1.0:java')
             $proc = Start-Process -FilePath mvn -ArgumentList $args -NoNewWindow -Wait -PassThru
             if ($proc.ExitCode -ne 0) {
                 Write-Warning "mvn exec retornou código de erro $($proc.ExitCode)"
-                Write-Host "Tentando fallback usando tokenizador --% (PowerShell pass-through)..."
-                # fallback: usa --% para evitar parsing; nem todos os ambientes PowerShell suportam --%, mas vale tentar
-                & mvn --% -Dexec.mainClass=controle.Main org.codehaus.mojo:exec-maven-plugin:3.1.0:java
-                if ($LASTEXITCODE -ne 0) { Write-Warning "Fallback mvn --% também falhou com código $LASTEXITCODE" }
             }
         }
         return
     }
 
-    Write-Host "Maven não encontrado. Tentando compilar com javac e garantir driver MySQL em lib/*."
+    Write-Host "Maven não encontrado. Compilando com javac..."
 
     # Garante pasta lib
     New-Item -ItemType Directory -Path .\lib -ErrorAction SilentlyContinue | Out-Null
 
-    # Se não houver driver MySQL, tenta baixar a versão mais recente do Maven Central
-    $jarFound = Get-ChildItem -Path .\lib -Filter "mysql-connector-java*.jar" -File -ErrorAction SilentlyContinue
+    # Baixa dependências se necessário
+    $jarFound = Get-ChildItem -Path .\lib -Filter "mysql-connector*.jar" -File -ErrorAction SilentlyContinue
     if (-not $jarFound) {
-        Write-Host "Driver MySQL não encontrado em lib/. Tentando baixar automaticamente..."
         try {
-            $meta = Invoke-WebRequest -UseBasicParsing 'https://repo1.maven.org/maven2/mysql/mysql-connector-java/maven-metadata.xml'
-            [xml]$m = $meta.Content
-            $latest = $m.metadata.versioning.latest
-            if (-not $latest) { $latest = $m.metadata.versioning.release }
-            $url = "https://repo1.maven.org/maven2/mysql/mysql-connector-java/$latest/mysql-connector-java-$latest.jar"
-            Write-Host "Baixando $url"
-            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile (".\lib\mysql-connector-java-$latest.jar") -ErrorAction Stop
-            Write-Host "Download concluído: .\lib\mysql-connector-java-$latest.jar"
+            $url = "https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.0.33/mysql-connector-j-8.0.33.jar"
+            Write-Host "Baixando MySQL Connector..."
+            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile ".\lib\mysql-connector-j-8.0.33.jar" -ErrorAction Stop
         } catch {
-            Write-Warning "Falha ao baixar automaticamente o driver: $($_.Exception.Message)"
-            Write-Host "Por favor, baixe manualmente o JAR do MySQL Connector e coloque em .\lib, ou instale o Maven."
+            Write-Warning "Falha ao baixar driver MySQL: $($_.Exception.Message)"
         }
-    } else {
-        Write-Host "Driver MySQL detectado: $($jarFound.Name)"
     }
 
-    # Compilar com javac incluindo lib/*
+    $bcryptFound = Get-ChildItem -Path .\lib -Filter "jbcrypt*.jar" -File -ErrorAction SilentlyContinue
+    if (-not $bcryptFound) {
+        try {
+            $url = "https://repo1.maven.org/maven2/org/mindrot/jbcrypt/0.4/jbcrypt-0.4.jar"
+            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile ".\lib\jbcrypt-0.4.jar" -ErrorAction Stop
+        } catch {
+            Write-Warning "Falha ao baixar BCrypt: $($_.Exception.Message)"
+        }
+    }
+
+    # Limpa e cria diretório de saída
     if (Test-Path .\out) { Remove-Item -Recurse -Force .\out }
     New-Item -ItemType Directory -Path .\out | Out-Null
-    $files = Get-ChildItem -Path .\src -Recurse -Filter *.java | ForEach-Object { $_.FullName }
-    Write-Host "Compilando fontes..."
-    & javac -d .\out -cp "lib/*" $files
+    
+    Write-Host "Compilando projeto com encoding UTF-8..."
+    
+    $baseSourcePath = ".\src\main\java"
+    $libPath = "lib/*"
+    
+    # Compila as bibliotecas br/ e com/ primeiro
+    Write-Host "  -> Compilando br.uespi.*"
+    $brFiles = Get-ChildItem -Path ".\br" -Recurse -Filter *.java -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+    if ($brFiles) {
+        & javac -encoding UTF-8 -d .\out -cp $libPath $brFiles
+    }
+    
+    # ZXing agora usa JAR em lib/ (zxing-core-3.5.1.jar) - não precisa compilar fonte
+    
+    # Compila o projeto principal por pacote
+    Write-Host "  -> Compilando controle.config.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\config\*.java" 2>$null
+    
+    Write-Host "  -> Compilando controle.model.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\model\*.java" 2>$null
+    
+    Write-Host "  -> Compilando controle.dao.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\dao\*.java" 2>$null
+    
+    Write-Host "  -> Compilando controle.util.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\util\*.java"
+    
+    Write-Host "  -> Compilando controle.api.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\api\*.java" 2>$null
+    
+    Write-Host "  -> Compilando controle.ui.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\ui\*.java"
+    
+    Write-Host "  -> Compilando controle.tools.*"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\tools\*.java" 2>$null
+    
+    Write-Host "  -> Compilando controle.Main e controle.Conexao"
+    & javac -encoding UTF-8 -d .\out -cp "lib\*;.\out" -sourcepath $baseSourcePath "$baseSourcePath\controle\Main.java" "$baseSourcePath\controle\Conexao.java"
+    
+    $exitCode = $LASTEXITCODE
 
-    # Executar com classpath incluindo jars em lib
-    $cp = ".\out;lib/*"
-    Write-Host "Executando controle.Main..."
-    & java -cp $cp controle.Main
+    if ($exitCode -eq 0) {
+        $cp = ".\out;lib/*"
+        Write-Host "Executando controle.Main..."
+        & java -cp $cp controle.Main
+    } else {
+        Write-Warning "Compilação falhou com código $exitCode"
+    }
 }
 
 Start-Build

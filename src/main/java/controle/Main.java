@@ -1,58 +1,43 @@
 package controle;
 
-import java.sql.Connection;
-import java.util.List;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import controle.dao.UsuarioDAO;
-import controle.dao.UsuarioDAOImpl;
-import controle.model.Usuario;
+import controle.ui.TelaLoginPrincipal;
 
+/**
+ * Ponto de entrada principal do Sistema de Controle Financeiro Premium
+ * Inicia com a tela de login para autenticação segura
+ */
 public class Main {
 
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
     public static void main(String[] args) {
-        // shutdown hook para encerrar corretamente threads internas do driver MySQL
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        System.out.println("=".repeat(60));
+        System.out.println("SISTEMA DE CONTROLE FINANCEIRO PREMIUM");
+        System.out.println("=".repeat(60));
+        System.out.println("Iniciando sistema com autenticacao segura...");
+        System.out.println("Recursos: Pagamentos PIX, Cartoes Criptografados, QR Code");
+        System.out.println("-".repeat(60));
+        
+        SwingUtilities.invokeLater(() -> {
             try {
-                com.mysql.cj.jdbc.AbandonedConnectionCleanupThread.checkedShutdown();
-            } catch (Throwable ex) {
-                // ignorar
+                // Define Look and Feel nativo do sistema
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                
+                // Inicia a tela de login principal
+                TelaLoginPrincipal telaLogin = new TelaLoginPrincipal();
+                telaLogin.setVisible(true);
+                
+                System.out.println("Interface grafica iniciada com sucesso!");
+                
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Erro ao iniciar interface grafica", e);
+                System.err.println("Erro ao iniciar sistema: " + e.getMessage());
             }
-        }));
-
-        System.out.println("Teste de conexão e lista de usuários");
-        // Testa a conexão primeiro
-        try (Connection conn = Conexao.getConnection()) {
-            if (conn != null && !conn.isClosed()) {
-                System.out.println("Conexão com o banco: OK -> " + conn.getMetaData().getURL());
-            } else {
-                System.out.println("Conexão com o banco: falhou (conn nulo ou fechado)");
-            }
-        } catch (Exception ce) {
-            LOGGER.log(Level.SEVERE, "Falha ao conectar no banco", ce);
-            // se a conexão falhar, ainda tentamos executar o DAO para ver mensagens adicionais
-        }
-
-        UsuarioDAO dao = new UsuarioDAOImpl();
-        try {
-            List<Usuario> usuarios = dao.findAll();
-            if (usuarios.isEmpty()) {
-                System.out.println("Nenhum usuário cadastrado.");
-            } else {
-                usuarios.forEach(System.out::println);
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao recuperar usuários", e);
-        }
-
-        // chamada explícita para encerrar a thread de limpeza do driver MySQL
-        try {
-            com.mysql.cj.jdbc.AbandonedConnectionCleanupThread.checkedShutdown();
-        } catch (Throwable ex) {
-            // ignorar erros de shutdown
-        }
+        });
     }
 }

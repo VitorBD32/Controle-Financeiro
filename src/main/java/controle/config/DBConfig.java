@@ -64,4 +64,11 @@ public class DBConfig {
         }
         return pwd;
     }
+    
+    /**
+     * Obtém uma conexão com o banco de dados
+     */
+    public static java.sql.Connection getConnection() throws java.sql.SQLException {
+        return java.sql.DriverManager.getConnection(getUrl(), getUser(), getPassword());
+    }
 }

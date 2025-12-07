@@ -10,11 +10,13 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 // Imports do projeto Controle Financeiro
 import controle.dao.*;
 import controle.model.*;
 import controle.util.QRCodePIXGenerator;
+import controle.util.CryptoUtil;
 import br.uespi.acessoapi.pagamentoHTTP;
 import br.uespi.acessoapi.PIXConexao;
 import br.uespi.tratajson.JSONObject;
@@ -23,6 +25,7 @@ import br.uespi.tratajson.JSONArray;
 /**
  * Tela de Pagamento PIX integrada com o sistema de Controle Financeiro
  * Conectada com Usuários, Categorias e Transações
+ * Suporte a Cartões de Crédito/Débito com dados criptografados
  */
 public class TelaPagamentoPIX extends JFrame {
 
@@ -32,6 +35,12 @@ public class TelaPagamentoPIX extends JFrame {
     private JTextField txtValor;
     private JTextField txtDescricao;
     private JComboBox<String> cmbTipoPagamento;
+    
+    // Painel de seleção de cartão (para Crédito/Débito)
+    private JPanel panelCartao;
+    private JComboBox<Cartao> cmbCartao;
+    private JButton btnNovoCartao;
+    private JLabel lblCartaoInfo;
     
     // Área de resultado e QR Code
     private JTextArea txtResultado;
@@ -47,13 +56,22 @@ public class TelaPagamentoPIX extends JFrame {
     private UsuarioDAO usuarioDAO;
     private CategoriaDAO categoriaDAO;
     private TransacaoDAO transacaoDAO;
+    private CartaoDAO cartaoDAO;
+    
+    // Usuário logado atual
+    private Usuario usuarioLogado;
     
     // URL da API
     private static final String API_URL = "http://www.datse.com.br/dev/syncjava.php";
     private static final String QR_CODE_PATH = "resources/images/qrcode_pix.png";
 
     public TelaPagamentoPIX() {
-        super("💳 Pagamento PIX - Controle Financeiro");
+        this(null);
+    }
+    
+    public TelaPagamentoPIX(Usuario usuarioLogado) {
+        super("💳 Pagamento - Controle Financeiro Premium");
+        this.usuarioLogado = usuarioLogado;
         initDAOs();
         initComponents();
         carregarDados();
@@ -64,6 +82,7 @@ public class TelaPagamentoPIX extends JFrame {
             usuarioDAO = new UsuarioDAOImpl();
             categoriaDAO = new CategoriaDAOImpl();
             transacaoDAO = new TransacaoDAOImpl();
+            cartaoDAO = new CartaoDAOImpl();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, 
                 "Erro ao conectar com banco de dados:\n" + e.getMessage(),
@@ -106,11 +125,47 @@ public class TelaPagamentoPIX extends JFrame {
         selecaoPanel.add(new JLabel("💳 Tipo:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
         cmbTipoPagamento = new JComboBox<>(new String[]{"PIX", "Crédito", "Débito", "Boleto"});
-        cmbTipoPagamento.addActionListener(e -> atualizarQRCode());
+        cmbTipoPagamento.addActionListener(e -> atualizarTipoPagamento());
         selecaoPanel.add(cmbTipoPagamento, gbc);
 
+        // === PAINEL DE CARTÃO (visível apenas para Crédito/Débito) ===
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        panelCartao = new JPanel(new GridBagLayout());
+        panelCartao.setBorder(BorderFactory.createTitledBorder("🔒 Cartão Seguro"));
+        panelCartao.setBackground(new Color(240, 248, 255));
+        GridBagConstraints gbcCard = new GridBagConstraints();
+        gbcCard.insets = new Insets(3, 5, 3, 5);
+        
+        // Combo de cartões
+        gbcCard.gridx = 0; gbcCard.gridy = 0;
+        panelCartao.add(new JLabel("Cartão:"), gbcCard);
+        gbcCard.gridx = 1; gbcCard.fill = GridBagConstraints.HORIZONTAL; gbcCard.weightx = 1;
+        cmbCartao = new JComboBox<>();
+        cmbCartao.setRenderer(new CartaoComboRenderer());
+        cmbCartao.addActionListener(e -> atualizarInfoCartao());
+        panelCartao.add(cmbCartao, gbcCard);
+        
+        // Botão novo cartão
+        gbcCard.gridx = 2; gbcCard.fill = GridBagConstraints.NONE; gbcCard.weightx = 0;
+        btnNovoCartao = new JButton("➕ Novo");
+        btnNovoCartao.setToolTipText("Cadastrar novo cartão");
+        btnNovoCartao.addActionListener(e -> abrirCadastroCartao());
+        panelCartao.add(btnNovoCartao, gbcCard);
+        
+        // Info do cartão selecionado
+        gbcCard.gridx = 0; gbcCard.gridy = 1; gbcCard.gridwidth = 3;
+        gbcCard.fill = GridBagConstraints.HORIZONTAL;
+        lblCartaoInfo = new JLabel(" ");
+        lblCartaoInfo.setFont(new Font("SansSerif", Font.ITALIC, 11));
+        lblCartaoInfo.setForeground(new Color(0, 100, 0));
+        panelCartao.add(lblCartaoInfo, gbcCard);
+        
+        panelCartao.setVisible(false); // Começa oculto
+        selecaoPanel.add(panelCartao, gbc);
+        gbc.gridwidth = 1;
+
         // Valor
-        gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
         selecaoPanel.add(new JLabel("💰 Valor (R$):"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
         txtValor = new JTextField(15);
@@ -125,7 +180,7 @@ public class TelaPagamentoPIX extends JFrame {
         selecaoPanel.add(txtValor, gbc);
 
         // Descrição
-        gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 5; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
         selecaoPanel.add(new JLabel("📝 Descrição:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
         txtDescricao = new JTextField(25);
@@ -140,7 +195,7 @@ public class TelaPagamentoPIX extends JFrame {
         selecaoPanel.add(txtDescricao, gbc);
         
         // Botão para regenerar QR Code
-        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         JButton btnGerarQR = new JButton("🔄 Atualizar QR Code");
         btnGerarQR.addActionListener(e -> gerarQRCodeDinamico());
         selecaoPanel.add(btnGerarQR, gbc);
@@ -216,6 +271,8 @@ public class TelaPagamentoPIX extends JFrame {
             cmbUsuario.removeAllItems();
             for (Usuario u : usuarios) {
                 cmbUsuario.addItem(u);
+                // Log authorization status to terminal for admin audit
+                System.out.println("[USERS] " + u.getNome() + " (ID: " + u.getId() + ") - autorizado=" + u.isAutorizado());
             }
             
             // Carrega categorias (apenas tipo D - Despesa para pagamentos)
@@ -231,6 +288,15 @@ public class TelaPagamentoPIX extends JFrame {
             System.err.println("❌ Erro ao carregar dados: " + e.getMessage());
             txtResultado.setText("Erro ao carregar dados do banco:\n" + e.getMessage());
         }
+    }
+
+    private void appendLog(String msg) {
+        String time = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+        if (txtResultado != null) {
+            txtResultado.append("[" + time + "] " + msg + "\n");
+            txtResultado.setCaretPosition(txtResultado.getDocument().getLength());
+        }
+        System.out.println(msg);
     }
 
     private void atualizarQRCode() {
@@ -317,6 +383,13 @@ public class TelaPagamentoPIX extends JFrame {
             return;
         }
 
+        // Verifica autorização do usuário para realizar pagamentos
+        if (!usuario.isAutorizado()) {
+            appendLog("🚫 Usuário não autorizado a realizar pagamentos: " + usuario.getNome());
+            JOptionPane.showMessageDialog(this, "Usuário não está autorizado a realizar pagamentos.", "Acesso Negado", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         // Log no terminal
         System.out.println("\n" + "=".repeat(60));
         System.out.println("💳 PROCESSANDO PAGAMENTO " + tipoPagamento);
@@ -335,28 +408,73 @@ public class TelaPagamentoPIX extends JFrame {
         resultado.append("📝 Descrição: ").append(descricao).append("\n\n");
 
         try {
-            // Conecta com API
-            pagamentoHTTP pagamento = new pagamentoHTTP(
-                usuario.getNome(),
-                String.valueOf(usuario.getId()),
-                tipoPagamento,
-                valor.toString(),
-                tipoPagamento,
-                API_URL
-            );
-            
-            String resposta = pagamento.conecta();
-            int codigoHTTP = pagamento.codretorno;
+            // Run async payment and saving within SwingWorker to keep UI responsive
+            btnEmitir.setEnabled(false);
+            btnSalvarTransacao.setEnabled(false);
+            btnLimpar.setEnabled(false);
 
-            resultado.append("✅ Status: PROCESSADO\n");
-            resultado.append("📡 Código HTTP: ").append(codigoHTTP).append("\n");
-            resultado.append("📥 Resposta: ").append(resposta).append("\n");
-
-            System.out.println("✅ Pagamento processado!");
-            System.out.println("📡 Código: " + codigoHTTP);
-            System.out.println("📥 Resposta: " + resposta);
-            System.out.println("=".repeat(60) + "\n");
-
+            SwingWorker<Void, Void> paymentWorker = new SwingWorker<>() {
+                String resposta = null;
+                int codigoHTTP = -1;
+                Exception erro = null;
+                @Override
+                protected Void doInBackground() {
+                    try {
+                        String cpf = usuario.getEmail() != null ? usuario.getEmail() : String.valueOf(usuario.getId());
+                        String ncartao = ""; // not used for PIX
+                        pagamentoHTTP pagamento = new pagamentoHTTP(
+                            usuario.getNome(),
+                            cpf,
+                            ncartao,
+                            valor.toString(),
+                            tipoPagamento,
+                            API_URL
+                        );
+                        resposta = pagamento.conecta();
+                        codigoHTTP = pagamento.codretorno;
+                    } catch (Exception ex) {
+                        erro = ex;
+                    }
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    try {
+                        if (erro != null) {
+                            appendLog("❌ Erro no processamento do pagamento: " + erro.getMessage());
+                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Erro ao processar pagamento: " + erro.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        appendLog("✅ Pagamento processado! Código HTTP: " + codigoHTTP);
+                        // Imprime JSON de resposta no terminal para auditoria (somente terminal)
+                        if (resposta != null && !resposta.isEmpty()) {
+                            System.out.println("[API RESPONSE] " + resposta);
+                        }
+                        // Save transaction
+                        try {
+                            Transacao t = new Transacao();
+                            t.setIdUsuario(usuario.getId());
+                            t.setIdCategoria(categoria.getId());
+                            t.setTipo("D");
+                            t.setValor(valor);
+                            t.setData(LocalDateTime.now());
+                            t.setDescricao(descricao.isEmpty() ? "Pagamento " + tipoPagamento : descricao);
+                            transacaoDAO.insert(t);
+                            appendLog("✅ Transação salva com sucesso (ID: " + t.getId() + ")");
+                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento e transação salvos com sucesso (ID: " + t.getId() + ")", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                        } catch (Exception se) {
+                            appendLog("⚠️ Pagamento processado, mas falha ao salvar transação: " + se.getMessage());
+                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento processado, mas falha ao salvar transação: " + se.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+                        }
+                    } finally {
+                        btnEmitir.setEnabled(true);
+                        btnSalvarTransacao.setEnabled(true);
+                        btnLimpar.setEnabled(true);
+                    }
+                }
+            };
+            paymentWorker.execute();
+            return; // background flow handles rest
         } catch (Exception ex) {
             resultado.append("⚠️ Pagamento simulado (API offline)\n");
             resultado.append("Status: APROVADO (modo demo)\n");
@@ -412,6 +530,134 @@ public class TelaPagamentoPIX extends JFrame {
         txtDescricao.setText("");
         txtResultado.setText("");
         cmbTipoPagamento.setSelectedIndex(0);
+        if (cmbCartao != null && cmbCartao.getItemCount() > 0) {
+            cmbCartao.setSelectedIndex(0);
+        }
+    }
+    
+    /**
+     * Atualiza a interface baseado no tipo de pagamento selecionado
+     */
+    private void atualizarTipoPagamento() {
+        String tipo = (String) cmbTipoPagamento.getSelectedItem();
+        boolean isPix = "PIX".equals(tipo);
+        boolean isCartao = "Crédito".equals(tipo) || "Débito".equals(tipo);
+        
+        // Mostra/oculta QR Code PIX
+        panelQRCode.setVisible(isPix);
+        
+        // Mostra/oculta painel de cartão
+        panelCartao.setVisible(isCartao);
+        
+        if (isPix) {
+            gerarQRCodeDinamico();
+        }
+        
+        if (isCartao) {
+            carregarCartoes();
+        }
+        
+        pack();
+        int altura = isPix ? 700 : (isCartao ? 550 : 450);
+        setSize(480, altura);
+    }
+    
+    /**
+     * Carrega os cartões do usuário selecionado
+     */
+    private void carregarCartoes() {
+        cmbCartao.removeAllItems();
+        Usuario usuario = (Usuario) cmbUsuario.getSelectedItem();
+        
+        if (usuario == null && usuarioLogado != null) {
+            usuario = usuarioLogado;
+        }
+        
+        if (usuario == null) {
+            lblCartaoInfo.setText("⚠️ Selecione um usuário primeiro");
+            return;
+        }
+        
+        try {
+            String tipo = (String) cmbTipoPagamento.getSelectedItem();
+            String tipoCartao = "Crédito".equals(tipo) ? "CREDITO" : "DEBITO";
+            
+            List<Cartao> cartoes = cartaoDAO.findByUsuario(usuario.getId());
+            int count = 0;
+            
+            for (Cartao c : cartoes) {
+                if (c.isAtivo() && c.getTipo().equalsIgnoreCase(tipoCartao)) {
+                    cmbCartao.addItem(c);
+                    count++;
+                }
+            }
+            
+            if (count == 0) {
+                lblCartaoInfo.setText("⚠️ Nenhum cartão de " + tipo.toLowerCase() + " cadastrado");
+            } else {
+                lblCartaoInfo.setText("✅ " + count + " cartão(ões) disponível(is)");
+            }
+            
+            System.out.println("✅ Carregados " + count + " cartões de " + tipo + " para usuário " + usuario.getNome());
+            
+        } catch (Exception e) {
+            lblCartaoInfo.setText("❌ Erro ao carregar cartões");
+            System.err.println("❌ Erro ao carregar cartões: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Atualiza info do cartão selecionado
+     */
+    private void atualizarInfoCartao() {
+        Cartao cartao = (Cartao) cmbCartao.getSelectedItem();
+        if (cartao != null) {
+            String mascarado = cartao.getNumeroMascarado();
+            lblCartaoInfo.setText("🔒 " + cartao.getBandeira() + " - " + mascarado + " (Val: " + cartao.getValidade() + ")");
+        }
+    }
+    
+    /**
+     * Abre tela de cadastro de novo cartão
+     */
+    private void abrirCadastroCartao() {
+        Usuario usuario = (Usuario) cmbUsuario.getSelectedItem();
+        if (usuario == null && usuarioLogado != null) {
+            usuario = usuarioLogado;
+        }
+        
+        if (usuario == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Selecione um usuário primeiro!", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        String tipo = (String) cmbTipoPagamento.getSelectedItem();
+        String tipoCartao = "Crédito".equals(tipo) ? "CREDITO" : "DEBITO";
+        
+        TelaCadastroCartao tela = new TelaCadastroCartao(this, usuario, tipoCartao);
+        tela.setVisible(true);
+        
+        // Recarrega cartões após fechar o cadastro
+        carregarCartoes();
+    }
+    
+    /**
+     * Renderer customizado para exibir cartões no combobox
+     */
+    private class CartaoComboRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, 
+                int index, boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            
+            if (value instanceof Cartao) {
+                Cartao c = (Cartao) value;
+                String mascarado = c.getNumeroMascarado();
+                setText(c.getBandeira() + " " + mascarado + " - " + c.getNomeTitular());
+            }
+            return this;
+        }
     }
 
     public static void main(String[] args) {

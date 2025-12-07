@@ -16,6 +16,8 @@ import java.awt.print.*;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Tela para testar e visualizar conexões com a API
@@ -27,17 +29,19 @@ public class TelaAPIConexao extends JFrame {
     private JTextField txtUrl;
     private JTextField txtUsuario;
     private JPasswordField txtSenha;
-    private JTextArea txtResultado;
-    private JTextArea txtJsonFormatado;
+    // UI log area - replaces raw/json text areas to avoid exposing JSON to users
+    private JTextArea txtLog;
     private JButton btnTestarConexao;
     private JButton btnSincronizar;
     private JButton btnConsultar;
     private JButton btnGerarNota;
     private JButton btnImprimir;
+    private JButton btnSalvarPdf;
     private JButton btnSalvarJson;
     private JLabel lblStatus;
     private TransacaoDAO transacaoDAO;
     private String ultimoJsonGerado = "";
+    private controle.model.Usuario currentUser = null;
 
     public TelaAPIConexao() {
         super("Conexão API - Controle Financeiro");
@@ -46,6 +50,14 @@ public class TelaAPIConexao extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(900, 700);
         setLocationRelativeTo(null);
+    }
+
+    public TelaAPIConexao(controle.model.Usuario user) {
+        this();
+        this.currentUser = user;
+        if (btnSalvarPdf != null) {
+            btnSalvarPdf.setEnabled(user != null && user.isAdmin());
+        }
     }
 
     private void initComponents() {
@@ -86,14 +98,17 @@ public class TelaAPIConexao extends JFrame {
         btnConsultar = new JButton("🔍 Consultar API");
         btnGerarNota = new JButton("🧾 Gerar Nota Fiscal");
         btnImprimir = new JButton("🖨️ Imprimir");
-        btnSalvarJson = new JButton("💾 Salvar JSON");
+        btnSalvarPdf = new JButton("📁 Salvar como PDF");
+        btnSalvarPdf.setEnabled(false);
+        // btnSalvarJson intentionally removed to prevent exposing JSON to users
         
         btnTestarConexao.addActionListener(this::testarConexao);
         btnSincronizar.addActionListener(this::sincronizarTransacoes);
         btnConsultar.addActionListener(this::consultarAPI);
         btnGerarNota.addActionListener(this::gerarNotaFiscal);
         btnImprimir.addActionListener(this::imprimirNotaFiscal);
-        btnSalvarJson.addActionListener(this::salvarJsonArquivo);
+        btnSalvarPdf.addActionListener(this::salvarNotaComoPDF);
+        // Removed listener assignment: btnSalvarJson is intentionally not added to the UI
 
         panelBotoes.add(btnTestarConexao);
         panelBotoes.add(btnSincronizar);
@@ -101,7 +116,8 @@ public class TelaAPIConexao extends JFrame {
         panelBotoes.add(Box.createHorizontalStrut(20));
         panelBotoes.add(btnGerarNota);
         panelBotoes.add(btnImprimir);
-        panelBotoes.add(btnSalvarJson);
+        panelBotoes.add(btnSalvarPdf);
+        // panelBotoes.add(btnSalvarJson); // removed for security
 
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
         panelConfig.add(panelBotoes, gbc);
@@ -114,41 +130,17 @@ public class TelaAPIConexao extends JFrame {
 
         add(panelConfig, BorderLayout.NORTH);
 
-        // Painel de resultados (split)
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setResizeWeight(0.5);
-
-        // Resultado RAW
-        JPanel panelRaw = new JPanel(new BorderLayout());
-        panelRaw.setBorder(new TitledBorder("Resposta RAW"));
-        txtResultado = new JTextArea();
-        txtResultado.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        txtResultado.setEditable(false);
-        panelRaw.add(new JScrollPane(txtResultado), BorderLayout.CENTER);
-
-        // JSON Formatado
-        JPanel panelJson = new JPanel(new BorderLayout());
-        panelJson.setBorder(new TitledBorder("JSON Formatado"));
-        txtJsonFormatado = new JTextArea();
-        txtJsonFormatado.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        txtJsonFormatado.setEditable(false);
-        txtJsonFormatado.setForeground(new Color(0, 100, 0));
-        panelJson.add(new JScrollPane(txtJsonFormatado), BorderLayout.CENTER);
-
-        splitPane.setLeftComponent(panelRaw);
-        splitPane.setRightComponent(panelJson);
-
-        add(splitPane, BorderLayout.CENTER);
-
-        // Painel inferior com log
+        // Painel de resultados (log central)
         JPanel panelLog = new JPanel(new BorderLayout());
         panelLog.setBorder(new TitledBorder("Log de Operações"));
-        JTextArea txtLog = new JTextArea(5, 50);
+        txtLog = new JTextArea(20, 80);
         txtLog.setFont(new Font("Monospaced", Font.PLAIN, 11));
         txtLog.setEditable(false);
         panelLog.add(new JScrollPane(txtLog), BorderLayout.CENTER);
 
-        add(panelLog, BorderLayout.SOUTH);
+        add(panelLog, BorderLayout.CENTER);
+
+        // Footer area or status could go here (we use central log area only)
     }
 
     private void testarConexao(ActionEvent e) {
@@ -194,13 +186,12 @@ public class TelaAPIConexao extends JFrame {
             protected void done() {
                 try {
                     String resultado = get();
-                    txtResultado.setText(resultado);
-                    txtJsonFormatado.setText(jsonFormatado);
-                    ultimoJsonGerado = jsonFormatado;
+                    // Log minimal summary to UI; full JSON remains in terminal logs (not shown to user)
+                    appendSafeLog("Teste de conexão concluído. Verifique o terminal para detalhes.");
                     lblStatus.setText("Conexão concluída");
                     lblStatus.setForeground(Color.GREEN);
                 } catch (Exception ex) {
-                    txtResultado.setText("ERRO: " + ex.getMessage());
+                    appendLog("ERRO: " + ex.getMessage());
                     lblStatus.setText("Erro na conexão");
                     lblStatus.setForeground(Color.RED);
                 }
@@ -306,13 +297,12 @@ public class TelaAPIConexao extends JFrame {
             protected void done() {
                 try {
                     String resultado = get();
-                    txtResultado.setText(resultado);
-                    txtJsonFormatado.setText(jsonFormatado);
+                    appendSafeLog("Sincronização concluída. Verifique o terminal para detalhes.");
                     ultimoJsonGerado = jsonFormatado;
                     lblStatus.setText("Sincronização concluída");
                     lblStatus.setForeground(Color.GREEN);
                 } catch (Exception ex) {
-                    txtResultado.setText("ERRO: " + ex.getMessage());
+                    appendLog("ERRO: " + ex.getMessage());
                     lblStatus.setText("Erro na sincronização");
                     lblStatus.setForeground(Color.RED);
                 }
@@ -369,13 +359,12 @@ public class TelaAPIConexao extends JFrame {
             protected void done() {
                 try {
                     String resultado = get();
-                    txtResultado.setText(resultado);
-                    txtJsonFormatado.setText(jsonFormatado);
+                    appendSafeLog("Consulta concluída. Verifique o terminal para detalhes.");
                     ultimoJsonGerado = jsonFormatado;
                     lblStatus.setText("Consulta concluída");
                     lblStatus.setForeground(Color.GREEN);
                 } catch (Exception ex) {
-                    txtResultado.setText("ERRO: " + ex.getMessage());
+                    appendLog("ERRO: " + ex.getMessage());
                     lblStatus.setText("Erro na consulta");
                     lblStatus.setForeground(Color.RED);
                 }
@@ -412,13 +401,12 @@ public class TelaAPIConexao extends JFrame {
             protected void done() {
                 try {
                     String resultado = get();
-                    txtResultado.setText(resultado);
-                    txtJsonFormatado.setText(jsonFormatado);
                     ultimoJsonGerado = jsonFormatado;
+                    appendSafeLog("Nota fiscal gerada. Verifique o terminal para detalhes.");
                     lblStatus.setText("Nota Fiscal gerada!");
                     lblStatus.setForeground(new Color(0, 150, 0));
                 } catch (Exception ex) {
-                    txtResultado.setText("ERRO: " + ex.getMessage());
+                    appendLog("ERRO: " + ex.getMessage());
                     lblStatus.setText("Erro ao gerar nota");
                     lblStatus.setForeground(Color.RED);
                 }
@@ -431,13 +419,30 @@ public class TelaAPIConexao extends JFrame {
      * Imprime a Nota Fiscal exibida na tela
      */
     private void imprimirNotaFiscal(ActionEvent e) {
-        String conteudo = txtJsonFormatado.getText();
+        final String conteudo = ultimoJsonGerado;
         if (conteudo == null || conteudo.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, 
                 "Nenhum conteúdo para imprimir!\nGere uma nota fiscal primeiro.",
                 "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        // Read tax config and display in print header
+        String tmpTaxIbs = "0.00";
+        String tmpTaxCbs = "0.00";
+        String tmpTaxService = "0.00";
+        try {
+            controle.dao.ConfigDAO cfg = new controle.dao.ConfigDAOImpl();
+            String t1 = cfg.get("tax_ibs"); if (t1 != null) tmpTaxIbs = t1;
+            String t2 = cfg.get("tax_cbs"); if (t2 != null) tmpTaxCbs = t2;
+            String t3 = cfg.get("tax_service"); if (t3 != null) tmpTaxService = t3;
+        } catch (Exception ex) {
+            System.err.println("[WARN] Nao foi possivel carregar config de tributos: " + ex.getMessage());
+        }
+        final String taxIbs = tmpTaxIbs;
+        final String taxCbs = tmpTaxCbs;
+        final String taxService = tmpTaxService;
+        // taxes are loaded into tmp variables and assigned to final taxX variables above
 
         PrinterJob printerJob = PrinterJob.getPrinterJob();
         printerJob.setJobName("Nota Fiscal - Controle Financeiro");
@@ -461,6 +466,10 @@ public class TelaAPIConexao extends JFrame {
                 g2d.setFont(titleFont);
                 g2d.drawString("NOTA FISCAL - CONTROLE FINANCEIRO", 50, 30);
                 g2d.drawString("Usuário: " + txtUsuario.getText(), 50, 50);
+                // Draw taxes header
+                Font taxFont = new Font("SansSerif", Font.PLAIN, 10);
+                g2d.setFont(taxFont);
+                g2d.drawString("Taxas - IBS: " + taxIbs + "%  CBS: " + taxCbs + "%  Service: " + taxService + "%", 50, 66);
 
                 // Volta para fonte normal
                 g2d.setFont(font);
@@ -509,7 +518,7 @@ public class TelaAPIConexao extends JFrame {
      * Salva o JSON em um arquivo
      */
     private void salvarJsonArquivo(ActionEvent e) {
-        String conteudo = txtJsonFormatado.getText();
+        String conteudo = ultimoJsonGerado;
         if (conteudo == null || conteudo.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, 
                 "Nenhum JSON para salvar!\nFaça uma consulta ou gere uma nota fiscal primeiro.",
@@ -547,6 +556,78 @@ public class TelaAPIConexao extends JFrame {
                     "Erro ao salvar arquivo: " + ex.getMessage(),
                     "Erro", JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+
+    private void salvarNotaComoPDF(ActionEvent e) {
+        String conteudo = ultimoJsonGerado;
+        if (conteudo == null || conteudo.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Nenhum conteúdo para salvar!\nGere uma nota fiscal primeiro.",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Salvar Nota Fiscal como PDF");
+        chooser.setSelectedFile(new java.io.File("nota_fiscal_" + System.currentTimeMillis() + ".pdf"));
+        int r = chooser.showSaveDialog(this);
+        if (r != JFileChooser.APPROVE_OPTION) return;
+        java.io.File file = chooser.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".pdf")) {
+            file = new java.io.File(file.getAbsolutePath() + ".pdf");
+        }
+
+        try {
+            // Read tax config and include it in the header
+            String taxIbs = "0.00";
+            String taxCbs = "0.00";
+            String taxService = "0.00";
+            try {
+                controle.dao.ConfigDAO cfg = new controle.dao.ConfigDAOImpl();
+                String t1 = cfg.get("tax_ibs"); if (t1 != null) taxIbs = t1;
+                String t2 = cfg.get("tax_cbs"); if (t2 != null) taxCbs = t2;
+                String t3 = cfg.get("tax_service"); if (t3 != null) taxService = t3;
+            } catch (Exception ex) {
+                System.err.println("[WARN] Nao foi possivel carregar config de tributos: " + ex.getMessage());
+            }
+
+            String[] headers = new String[]{"Usuário: " + txtUsuario.getText(), "Taxas - IBS: " + taxIbs + "%  CBS: " + taxCbs + "%  Service: " + taxService + "%"};
+            controle.util.PDFExporter.saveTextAsPDF(file,
+                    "Nota Fiscal - Controle Financeiro",
+                    headers,
+                    conteudo);
+            JOptionPane.showMessageDialog(this, "Nota fiscal salva como PDF: " + file.getAbsolutePath(), "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao salvar PDF: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    // Appends a timestamped message to the UI log and terminal
+    private void appendLog(String msg) {
+        if (txtLog != null) {
+            String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+            txtLog.append("[" + time + "] " + msg + "\n");
+            txtLog.setCaretPosition(txtLog.getDocument().getLength());
+        }
+        System.out.println(msg);
+    }
+
+    // Appends a message to the UI log after stripping JSON blocks
+    private void appendSafeLog(String text) {
+        appendLog(stripJson(text));
+    }
+
+    // Removes JSON objects/arrays so they are not displayed in the UI
+    private String stripJson(String text) {
+        if (text == null) return "";
+        // Remove large JSON arrays or objects using DOTALL
+        try {
+            return text.replaceAll("(?s)\"?\\[.*?\\]\"?", "[JSON omitted]")
+                       .replaceAll("(?s)\"?\\{.*?\\}\"?", "{JSON omitted}");
+        } catch (Exception e) {
+            return "[OUTPUT OMITTED]";
         }
     }
 

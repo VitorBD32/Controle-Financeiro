@@ -87,6 +87,28 @@ public class telaLogin extends JFrame{
          if (loginValido) {
              usuarioLogado = usuario;
              senhaLogado = senha;
+             // After successful API auth, fetch DB user to check roles and possibly show admin UI
+             try {
+                 controle.dao.UsuarioDAO udao = new controle.dao.UsuarioDAOImpl();
+                 controle.model.Usuario dbUser = null;
+                 if (usuario != null && usuario.contains("@")) {
+                     dbUser = udao.findByEmail(usuario);
+                 } else {
+                     dbUser = udao.findByNome(usuario);
+                 }
+                 if (dbUser != null && dbUser.isAdmin()) {
+                     System.out.println("[INFO] Usuário admin detectado: " + dbUser.getNome());
+                     // Open main admin transaction UI
+                     javax.swing.SwingUtilities.invokeLater(() -> {
+                         controle.ui.TelaTransacao tela = new controle.ui.TelaTransacao(dbUser);
+                         tela.setVisible(true);
+                         telaLogin.this.setVisible(false);
+                     });
+                     return;
+                 }
+             } catch (Exception e) {
+                 System.err.println("[WARN] Não foi possível verificar papel do usuário no DB: " + e.getMessage());
+             }
              
              System.out.println("\n[OK] LOGIN AUTORIZADO!");
              System.out.println("[INFO] Abrindo tela de pagamento PIX...");

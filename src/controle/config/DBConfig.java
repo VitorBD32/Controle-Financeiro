@@ -30,7 +30,25 @@ public class DBConfig {
         String host = props.getProperty("host", "127.0.0.1");
         String port = props.getProperty("port", "3306");
         String db = props.getProperty("database", "controle_financeiro");
-        return String.format("jdbc:mysql://%s:%s/%s?useSSL=false&serverTimezone=UTC", host, port, db);
+        // Build optional query parameters from properties
+        StringBuilder params = new StringBuilder();
+        String useSSL = props.getProperty("useSSL");
+        if (useSSL != null) {
+            params.append("useSSL=").append(useSSL);
+        } else {
+            params.append("useSSL=false");
+        }
+        String allowPKR = props.getProperty("allowPublicKeyRetrieval");
+        if (allowPKR != null) {
+            params.append("&allowPublicKeyRetrieval=").append(allowPKR);
+        }
+        String serverTZ = props.getProperty("serverTimezone");
+        if (serverTZ != null) {
+            params.append("&serverTimezone=").append(serverTZ);
+        } else {
+            params.append("&serverTimezone=UTC");
+        }
+        return String.format("jdbc:mysql://%s:%s/%s?%s", host, port, db, params.toString());
     }
 
     public static String getUser() {

@@ -6,6 +6,8 @@ public class Usuario {
     private String nome;
     private String email;
     private String senha;
+    private boolean autorizado = true; // default true for backward compatibility
+    private boolean admin = false; // default false: not an admin
 
     public Usuario() {
     }
@@ -15,6 +17,22 @@ public class Usuario {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
+    }
+
+    public boolean isAutorizado() {
+        return autorizado;
+    }
+
+    public void setAutorizado(boolean autorizado) {
+        this.autorizado = autorizado;
+    }
+
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
     }
 
     public int getId() {
@@ -51,6 +69,6 @@ public class Usuario {
 
     @Override
     public String toString() {
-        return "Usuario{id=" + id + ", nome='" + nome + "', email='" + email + "'}";
+        return "Usuario{id=" + id + ", nome='" + nome + "', email='" + email + "', autorizado=" + autorizado + ", admin=" + admin + "}";
     }
 }
