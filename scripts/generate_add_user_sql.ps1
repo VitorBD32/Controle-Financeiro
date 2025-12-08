@@ -3,8 +3,8 @@
    Gera comandos SQL para cadastrar um usuário (ex: JOAO) no servidor.
    Produz duas variantes: MD5 (legado) e bcrypt (php password_hash) quando possível.
 
- Usage:
-   .\generate_add_user_sql.ps1 -User JOAO -Password 1234 -Name "João da Silva" -Email joao@exemplo.com
+Usage:
+    .\generate_add_user_sql.ps1 -User JOAO -Password YOUR_PASSWORD -Name "João da Silva" -Email joao@exemplo.com
 
 #>
 

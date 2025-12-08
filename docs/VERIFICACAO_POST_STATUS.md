@@ -8,7 +8,7 @@
 ### Banco de Dados Local ✅
 - **Database:** `prova1` existe e está acessível
 - **Tabelas:** `usuarios`, `categorias`, `transacoes` criadas
-- **Usuário de teste:** JOAO (email: joao23@gmail.com, senha: 1234) inserido
+- **Usuário de teste:** JOAO (email: joao23@gmail.com, senha: YOUR_PASSWORD) inserido
 
 ### Endpoints PHP ✅
 - **Arquivos criados:**
@@ -104,13 +104,13 @@ Função `pw_match()` tenta 3 métodos:
 .\scripts\deploy-and-test-endpoints.ps1
 
 # Ou testes manuais:
-Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ username='JOAO'; password='1234' }
+Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' }
 ```
 
 ### Remoto (datse.com.br)
 ```powershell
 # Após deploy e configuração
-Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='1234' }
+Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' }
 ```
 
 ## ⚠️ Requisitos para Teste

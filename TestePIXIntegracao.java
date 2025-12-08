@@ -26,7 +26,8 @@ public class TestePIXIntegracao {
             Properties props = carregarConfiguracoes();
             String apiUrl = props.getProperty("api.sync.url", "http://www.datse.com.br/dev/syncjava.php");
             String usuario = props.getProperty("api.auth.user", "JOAO");
-            String senha = props.getProperty("api.auth.password", "1234");
+            // Do not default to a test password; prefer empty and encourage users to set via config or env
+            String senha = props.getProperty("api.auth.password", "");
             
             System.out.println("[INFO] Configurações carregadas:");
             System.out.println("  - URL da API: " + apiUrl);

@@ -206,7 +206,7 @@ $DB_NAME = 'prova1';
 Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Teste 2: email + password
-Invoke-RestMethod -Uri 'http://localhost/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='1234' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://localhost/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Teste 3: Basic Auth
 $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('JOAO:YOUR_PASSWORD'))

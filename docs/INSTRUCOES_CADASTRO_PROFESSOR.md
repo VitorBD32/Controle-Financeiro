@@ -101,7 +101,9 @@ Segue uma sugestão de mensagem que você pode mandar por WhatsApp/Teams/Email a
 
 ## 5) Notas de segurança e boas práticas
 
-- MD5 é inseguro; bcrypt é preferível. Se possível, gere o hash bcrypt no servidor e armazene-o.\n- Nunca compartilhe senhas reais; os exemplos aqui usam `1234` apenas para testes.\n- Depois do teste, remova ou troque a senha de teste por um valor seguro.
+- MD5 é inseguro; bcrypt é preferível. Se possível, gere o hash bcrypt no servidor e armazene-o.
+- Nunca compartilhe senhas reais; os exemplos aqui usam `YOUR_PASSWORD` apenas para testes.
+- Depois do teste, remova ou troque a senha de teste por um valor seguro.
 
 ---
 

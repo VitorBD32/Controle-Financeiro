@@ -1,7 +1,7 @@
 # GUIA RÁPIDO - Como Resolver o Problema de Autenticação
 
 ## 🎯 Problema Atual
-A aplicação está conectando com sucesso ao servidor, mas recebe "Login invalido" porque o usuário **JOAO** com senha **1234** não existe no banco de dados do servidor.
+A aplicação está conectando com sucesso ao servidor, mas recebe "Login invalido" porque o usuário **JOAO** com senha **YOUR_PASSWORD** não existe no banco de dados do servidor.
 
 ## ✅ SOLUÇÃO - Cadastrar Usuário via SQL Direto
 
@@ -124,25 +124,23 @@ SELECT login, senha FROM usuarios LIMIT 1;
 ```sql
 -- Se outros usuários usam MD5, use MD5 para JOAO também
 INSERT INTO usuarios (login, senha) 
-VALUES ('JOAO', MD5('1234'));
+VALUES ('JOAO', MD5('YOUR_PASSWORD'));
 ```
 
 ---
 
 ### 🚨 Troubleshooting
 
-#### Erro: "Duplicate entry 'JOAO'"
+A aplicação está conectando com sucesso ao servidor, mas recebe "Login invalido" porque o usuário **JOAO** com senha **YOUR_PASSWORD** não existe no banco de dados do servidor.
 ```sql
 -- O usuário já existe! Atualize a senha dele:
-UPDATE usuarios SET senha = MD5('1234') WHERE login = 'JOAO';
+UPDATE usuarios SET senha = MD5('YOUR_PASSWORD') WHERE login = 'JOAO';
 ```
 
 #### Erro: "Unknown column 'data_cadastro'"
 ```sql
 -- Remova o campo que não existe:
 INSERT INTO usuarios (login, senha, nome, email, ativo) 
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
-```
 
 #### Erro: "Table 'usuarios' doesn't exist"
 ```sql
@@ -150,13 +148,11 @@ VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
 SHOW TABLES LIKE '%user%';
 -- Ou:
 SHOW TABLES;
-```
-
+UPDATE usuarios SET senha = MD5('YOUR_PASSWORD') WHERE login = 'JOAO';
 ---
 
 ## 🔄 OPÇÕES ALTERNATIVAS (se não puder usar SQL direto)
 
-### OPÇÃO 1: Pedir ao admin para cadastrar JOAO
 
 **Se você NÃO tem acesso ao banco de dados, envie este email ao administrador:**
 
@@ -177,7 +173,7 @@ pois este usuário não existe no servidor.
 
 SQL sugerido:
 INSERT INTO usuarios (login, senha, nome, email, ativo) 
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
+VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao@exemplo.com', 1);
 
 Obrigado!
 ```
@@ -214,7 +210,7 @@ mvn -DskipTests package
 ```sql
 -- Exemplo básico (ajuste conforme sua tabela)
 INSERT INTO usuarios (login, senha, nome, email, ativo) 
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
+VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao@exemplo.com', 1);
 ```
 
 **Ou se usar bcrypt/password_hash (recomendado):**

@@ -23,23 +23,23 @@ http://www.datse.com.br/dev/syncjava.php
 
 ## Problema Identificado
 
-O usuário **"JOAO"** com senha **"1234"** configurado no cliente **NÃO existe no banco de dados do servidor**.
+O usuário **"JOAO"** com senha **"YOUR_PASSWORD"** configurado no cliente **NÃO existe no banco de dados do servidor**.
 
 **Testes realizados:**
-- ✅ Formato `{"login":"JOAO","senha":"1234"}` → Login invalido
-- ✅ Formato `{"username":"JOAO","password":"1234"}` → Login invalido
-- ✅ Formato `{"user":"JOAO","pass":"1234"}` → Login invalido
+- ✅ Formato `{"login":"JOAO","senha":"YOUR_PASSWORD"}` → Login invalido
+- ✅ Formato `{"username":"JOAO","password":"YOUR_PASSWORD"}` → Login invalido
+- ✅ Formato `{"user":"JOAO","pass":"YOUR_PASSWORD"}` → Login invalido
 - ✅ Payload sem credenciais → Login invalido
 - ✅ Payload não criptografado → Login invalido
 
 ## Problema Identificado
 
-O usuário **"JOAO"** com senha **"1234"** configurado no cliente **NÃO existe no banco de dados do servidor**.
+O usuário **"JOAO"** com senha **"YOUR_PASSWORD"** configurado no cliente **NÃO existe no banco de dados do servidor**.
 
 **Testes realizados:**
-- ✅ Formato `{"login":"JOAO","senha":"1234"}` → Login invalido
-- ✅ Formato `{"username":"JOAO","password":"1234"}` → Login invalido
-- ✅ Formato `{"user":"JOAO","pass":"1234"}` → Login invalido
+- ✅ Formato `{"login":"JOAO","senha":"YOUR_PASSWORD"}` → Login invalido
+- ✅ Formato `{"username":"JOAO","password":"YOUR_PASSWORD"}` → Login invalido
+- ✅ Formato `{"user":"JOAO","pass":"YOUR_PASSWORD"}` → Login invalido
 - ✅ Payload sem credenciais → Login invalido
 - ✅ Payload não criptografado → Login invalido
 
@@ -53,7 +53,7 @@ Por favor, cadastrar o seguinte usuário no banco de dados do servidor:
 
 **Credenciais necessárias:**
 - **Login/Username:** JOAO
-- **Senha/Password:** 1234
+- **Senha/Password:** YOUR_PASSWORD
 
 **Opções de cadastro:**
 
@@ -61,7 +61,7 @@ Por favor, cadastrar o seguinte usuário no banco de dados do servidor:
 ```sql
 -- Exemplo com hash MD5 (menos seguro, apenas para testes)
 INSERT INTO usuarios (login, senha, nome, email, ativo) 
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
+VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao@exemplo.com', 1);
 
 -- OU com bcrypt (recomendado para produção - PHP):
 -- senha hash: $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
@@ -86,7 +86,7 @@ Se preferir não criar usuário novo, fornecer credenciais válidas que já exis
 ```json
 {
   "login": "JOAO",
-  "senha": "1234",
+  "senha": "YOUR_PASSWORD",
   "id": 6,
   "tipo": "D",
   "valor": 2000.00,
@@ -121,7 +121,7 @@ encrypted_data=<base64_json_criptografado>&salt=<base64_salt>&client_id=<nome_co
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   --data-urlencode "login=JOAO" \
-  --data-urlencode "senha=1234" \
+  --data-urlencode "senha=YOUR_PASSWORD" \
   --data-urlencode "teste=manual"
 ```
 
@@ -145,7 +145,7 @@ retorna "Login invalido" pois o usuário ainda não está cadastrado.
 Solicito o cadastro do seguinte usuário no banco de dados:
 
 Login: JOAO
-Senha: 1234
+Senha: YOUR_PASSWORD
 
 Ou, alternativamente, fornecer credenciais válidas existentes no sistema.
 
