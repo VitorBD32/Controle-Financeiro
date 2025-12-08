@@ -1,0 +1,17 @@
+# Copy this file to config/api.properties and replace placeholders with actual values.
+# DO NOT commit the real config/api.properties file.
+
+# API sync endpoint
+api.sync.url=http://www.datse.com.br/dev/syncjava.php
+api.sync.fallbacks=http://www.datse.com.br/dev/syncjava2.php
+api.sync.secret=YOUR_SYNC_SECRET
+api.sync.salt.length=16
+api.sync.pbkdf2.iterations=20000
+api.sync.aes.key.length=256
+
+# Mode (prod/dev)
+api.mode=prod
+
+# Authentication for sync
+api.auth.user=YOUR_USER
+api.auth.password=YOUR_PASSWORD

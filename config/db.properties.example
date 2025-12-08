@@ -1,0 +1,10 @@
+# Copy this file to config/db.properties and replace placeholder values with your local credentials.
+# DO NOT commit the real config/db.properties file.
+#
+host=127.0.0.1
+port=3306
+database=PROVA1
+user=root
+password=YOUR_DB_PASSWORD
+allowPublicKeyRetrieval=true
+useSSL=false

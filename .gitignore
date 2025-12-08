@@ -1,0 +1,25 @@
+# Ignore build artifacts
+target/
+*.class
+*.jar
+
+# IDEs and Editor settings
+.idea/
+.vscode/
+*.iml
+
+# Logs and runtime
+*.log
+*.pid
+*.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Config files with secrets (keeps them local only)
+config/db.properties
+config/api.properties
+
+# Local environment
+.env
