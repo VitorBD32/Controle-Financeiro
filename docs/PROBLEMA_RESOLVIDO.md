@@ -90,7 +90,7 @@ http://localhost/syncjava2.php
 ```powershell
 # Teste 1: Autenticação com username/password
 Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post `
-  -Body @{ username='JOAO'; password='1234' } | ConvertTo-Json
+  -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Resultado esperado:
 {
@@ -108,7 +108,7 @@ Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post `
 ### Teste via curl
 ```bash
 curl -X POST http://localhost/syncjava.php \
-  -d "username=JOAO&password=1234"
+  -d "username=JOAO&password=YOUR_PASSWORD"
 ```
 
 ## 🎯 Próximos Passos para Integração

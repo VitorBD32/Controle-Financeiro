@@ -37,25 +37,25 @@ mysql -h www.datse.com.br -u seu_usuario -p nome_do_banco
 #### ✅ Opção A: Hash MD5 (Simples, comum em sistemas legados)
 ```sql
 INSERT INTO usuarios (nome, email, senha) 
-VALUES ('JOAO', 'joao@gmail.com', MD5('1234'));
+VALUES ('JOAO', 'joao@gmail.com', MD5('YOUR_PASSWORD'));
 ```
 
 #### ✅ Opção B: Hash SHA256 (Mais seguro)
 ```sql
 INSERT INTO usuarios (nome, email, senha) 
-VALUES ('JOAO', 'joao@gmail.com', SHA2('1234', 256));
+VALUES ('JOAO', 'joao@gmail.com', SHA2('YOUR_PASSWORD', 256));
 ```
 
 #### ⚠️ Opção C: Senha em Texto Plano (NÃO RECOMENDADO - só para testes)
 ```sql
 -- ATENÇÃO: Inseguro! Use apenas para testes rápidos
 INSERT INTO usuarios (nome, email, senha) 
-VALUES ('JOAO', 'joao@gmail.com', '1234');
+VALUES ('JOAO', 'joao@gmail.com', 'YOUR_PASSWORD');
 ```
 
 #### ✅ Opção D: Hash Bcrypt (Recomendado para Produção - PHP)
 ```sql
--- Hash bcrypt pré-calculado de '1234':
+-- Hash bcrypt pré-calculado de 'YOUR_PASSWORD':
 -- $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
 
 INSERT INTO usuarios (nome, email, senha) 
@@ -87,20 +87,20 @@ mvn -DskipTests package
 #### Se o usuário JOAO já existir (erro "Duplicate entry"):
 ```sql
 -- Atualizar a senha do JOAO existente:
-UPDATE usuarios SET senha = MD5('1234') WHERE nome = 'JOAO';
+UPDATE usuarios SET senha = MD5('YOUR_PASSWORD') WHERE nome = 'JOAO';
 ```
 
 #### Para criar com ID específico (se necessário):
 ```sql
 -- Forçar ID 8 (ajuste conforme necessário)
 INSERT INTO usuarios (id, nome, email, senha) 
-VALUES (8, 'JOAO', 'joao@gmail.com', MD5('1234'));
+VALUES (8, 'JOAO', 'joao@gmail.com', MD5('YOUR_PASSWORD'));
 ```
 
 #### SQL mínimo (só nome e senha):
 ```sql
 INSERT INTO usuarios (nome, senha) 
-VALUES ('JOAO', MD5('1234'));
+VALUES ('JOAO', MD5('YOUR_PASSWORD'));
 ```
 
 ---
@@ -168,7 +168,7 @@ Olá,
 Preciso que seja cadastrado este usuário no banco de dados para a API de sincronização:
 
 Login: JOAO
-Senha: 1234 (usar hash MD5, SHA256 ou bcrypt conforme padrão do sistema)
+Senha: YOUR_PASSWORD (usar hash MD5, SHA256 ou bcrypt conforme padrão do sistema)
 
 Endpoint: http://www.datse.com.br/dev/syncjava.php
 
@@ -219,7 +219,7 @@ VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com', 1);
 
 **Ou se usar bcrypt/password_hash (recomendado):**
 ```sql
--- Hash bcrypt de '1234': $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+-- Hash bcrypt de 'YOUR_PASSWORD': $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
 INSERT INTO usuarios (login, senha, nome, email, ativo) 
 VALUES ('JOAO', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'João', 'joao@exemplo.com', 1);
 ```

@@ -90,7 +90,7 @@ Os endpoints PHP (`syncjava.php` e `syncjava2.php`) suportam múltiplos formatos
 POST /syncjava.php HTTP/1.1
 Content-Type: application/x-www-form-urlencoded
 
-username=JOAO&password=1234
+username=JOAO&password=YOUR_PASSWORD
 ```
 
 **Variantes aceitas:**
@@ -203,7 +203,7 @@ $DB_NAME = 'prova1';
 #### Via PowerShell (Invoke-RestMethod):
 ```powershell
 # Teste 1: username + password (plain)
-Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ username='JOAO'; password='1234' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Teste 2: email + password
 Invoke-RestMethod -Uri 'http://localhost/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='1234' } | ConvertTo-Json
@@ -216,7 +216,7 @@ Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Headers @{ 
 #### Via curl (Bash/WSL):
 ```bash
 # Teste 1: Form POST
-curl -X POST http://localhost/syncjava.php -d "username=JOAO&password=1234"
+curl -X POST http://localhost/syncjava.php -d "username=JOAO&password=YOUR_PASSWORD"
 
 # Teste 2: Basic Auth
 curl -X POST http://localhost/syncjava.php -u JOAO:1234
@@ -271,7 +271,7 @@ Via FTP/SFTP ou painel de controle (cPanel/Plesk):
 
 ```powershell
 # Teste remoto
-Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='1234' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 ```
 
 **Resultado esperado:** JSON com `"auth_ok": true` se credenciais estiverem corretas no banco remoto.

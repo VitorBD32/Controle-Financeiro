@@ -128,7 +128,6 @@ Licença
 Este projeto é apenas um exemplo/discursivo e não se destina a produção sem auditoria completa e adaptação a requisitos legais locais. Verifique conformidade com LGPD e legislação fiscal vigente.
 
 Contato
--------
 Para dúvidas sobre a arquitetura, segurança ou funcionamento, contate o responsável pelo projeto (ver repositório) — não compartilhe credenciais em fóruns públicos.
 
 ---
@@ -147,3 +146,10 @@ Estrutura criada:
 
 
 python .\tools\mock_sync_server.py
+
+Segurança e configuração local
+-------------------------------
+1. Copie `config/db.properties.example` para `config/db.properties` e adicione suas credenciais locais do banco de dados (não comite este arquivo).
+2. Copie `config/api.properties.example` para `config/api.properties` e adicione segredos/credenciais da API (não comite este arquivo).
+3. Instale os hooks do pre-commit para detectar segredos antes de comitar (`pip install pre-commit && pre-commit install`).
+4. Se você acidentalmente comitar um segredo, deve rotacionar a credencial imediatamente e considerar limpar o histórico usando `git-filter-repo` ou BFG.

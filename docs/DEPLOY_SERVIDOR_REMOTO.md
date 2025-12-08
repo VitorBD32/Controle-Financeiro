@@ -179,7 +179,7 @@ Se você vir **"Conexão perdida"**, as credenciais do banco estão erradas.
 
 ```powershell
 # Teste 1: POST com credenciais
-Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='1234' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Teste 2: Endpoint alternativo
 Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='1234' } | ConvertTo-Json
@@ -204,7 +204,7 @@ Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava2.php' -Method Post
 
 ```bash
 curl -X POST https://www.datse.com.br/dev/syncjava.php \
-  -d "username=JOAO&password=1234"
+   -d "username=JOAO&password=YOUR_PASSWORD"
 ```
 
 ### 6. Configurar Desktop Java
