@@ -39,7 +39,8 @@ public class CheckPasswordStatus {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String senha = rs.getString(1);
-                    boolean isPlain = senha != null && senha.equals("62679421");
+                    String defaultTestPassword = System.getenv("TEST_PASSWORD");
+                    boolean isPlain = defaultTestPassword != null && senha != null && senha.equals(defaultTestPassword);
                     boolean looksHashed = senha != null && (senha.startsWith("$2a$") || senha.startsWith("$2b$") || senha.startsWith("$2y$"));
                     System.out.println("User identifier: " + (byEmail ? email : id));
                     System.out.println("Senha stored as hashed? " + (looksHashed ? "Yes" : "No"));

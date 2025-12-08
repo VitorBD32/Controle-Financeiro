@@ -10,8 +10,8 @@ import controle.Conexao;
 /**
  * CLI utility: SetUserPassword
  * Usage:
- *   java controle.util.SetUserPassword --id=2 62679421
- *   java controle.util.SetUserPassword --email=vitordebrito23@gmail.com 62679421
+ *   java controle.util.SetUserPassword --id=2 <NEW_PASSWORD>
+ *   java controle.util.SetUserPassword --email=vitordebrito23@gmail.com <NEW_PASSWORD>
  * The provided password is hashed with BCrypt and stored in DB. No plaintext is logged.
  */
 public class SetUserPassword {
