@@ -85,18 +85,17 @@ CREATE TABLE transacoes (
     FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 );
 
--- Inserir usuário JOAO com senha bcrypt
--- Gerar hash bcrypt em PHP: password_hash('1234', PASSWORD_BCRYPT)
 INSERT INTO usuarios (nome, email, senha) VALUES 
 ('JOAO', 'joao23@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
--- (Este hash é para a senha '1234' - substitua conforme necessário)
+-- (Este hash é para a senha 'YOUR_PASSWORD' - substitua conforme necessário)
+-- Gerar hash bcrypt em PHP: password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT)
 ```
 
 **Gerar hash bcrypt:**
 ```php
 <?php
 // Criar arquivo temp.php, fazer upload, acessar via navegador e depois deletar
-echo password_hash('1234', PASSWORD_BCRYPT);
+echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT);
 ?>
 ```
 
@@ -182,7 +181,7 @@ Se você vir **"Conexão perdida"**, as credenciais do banco estão erradas.
 Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava.php' -Method Post -Body @{ username='JOAO'; password='YOUR_PASSWORD' } | ConvertTo-Json
 
 # Teste 2: Endpoint alternativo
-Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='1234' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'https://www.datse.com.br/dev/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='YOUR_PASSWORD' } | ConvertTo-Json
 ```
 
 **Resultado esperado (HTTP 200):**
@@ -249,7 +248,7 @@ api.sync.url=https://www.datse.com.br/dev/syncjava.php
    ```sql
    SELECT nome, senha FROM usuarios WHERE nome='JOAO';
    ```
-2. Se a senha estiver em MD5, certifique-se de que é o MD5 correto de '1234':
+2. Se a senha estiver em MD5, certifique-se de que é o MD5 correto de 'YOUR_PASSWORD':
    ```
    81dc9bdb52d04dc20036dbd8313ed055
    ```

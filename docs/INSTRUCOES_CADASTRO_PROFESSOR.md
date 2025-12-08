@@ -1,5 +1,4 @@
 # Instruções rápidas para o professor / DBA — Opção A (Cadastrar JOAO)
-
 Este arquivo contém tudo pronto para o professor ou administrador do servidor aplicar a "Opção A": adicionar o usuário JOAO no banco de dados que o endpoint `syncjava.php` consulta, e verificar a autenticação via HTTP.
 
 IMPORTANTE: eu não tenho acesso ao servidor remoto. Estas instruções devem ser executadas por alguém com acesso ao banco de dados do servidor (DBA / professor).
@@ -17,17 +16,21 @@ Opções fornecidas:
 ```sql
 -- Ajuste o nome da tabela/colunas se o schema do servidor diferir
 INSERT INTO usuarios (login, senha, nome, email)
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao23@gmail.com');
+VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao23@gmail.com');
 ```
 
 - Variante A2 — bcrypt (recomendado se o servidor usa password_hash do PHP)
 
+$body = @{ email = 'joao23@gmail.com'; senha = 'YOUR_PASSWORD' }
 1. Gere o hash bcrypt no servidor (ex.: PHP):
 
+--data-urlencode "senha=YOUR_PASSWORD"
 ```php
 <?php
-echo password_hash('1234', PASSWORD_BCRYPT) . "\n";
+INSERT INTO usuarios (login, senha, nome, email) VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao23@gmail.com');
+echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT) . "\n";
 ?>
+Nunca compartilhe senhas reais; os exemplos aqui usam `YOUR_PASSWORD` apenas para testes.
 ```
 
 2. Cole o hash no INSERT (substitua `$2y$...`):
@@ -61,7 +64,7 @@ Recomendo usar PowerShell com `Invoke-RestMethod` (Windows) ou `curl` (Linux / G
 
 ```powershell
 #$ para senha simples
-$body = @{ email = 'joao23@gmail.com'; senha = '1234' }
+$body = @{ email = 'joao23@gmail.com'; senha = 'YOUR_PASSWORD' }
 Invoke-RestMethod -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method Post -Body $body -ContentType 'application/x-www-form-urlencoded; charset=UTF-8' -Verbose
 
 #$ para senha MD5 (se o servidor espera hash)
@@ -75,7 +78,7 @@ Invoke-RestMethod -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method Post -
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
   -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
   --data-urlencode "email=joao23@gmail.com" \
-  --data-urlencode "senha=1234"
+  --data-urlencode "senha=YOUR_PASSWORD"
 
 # ou MD5
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
@@ -92,7 +95,7 @@ Resposta esperada (quando OK): algo como `Login realizado com sucesso` ou outra 
 
 Segue uma sugestão de mensagem que você pode mandar por WhatsApp/Teams/Email ao professor:
 
-"Olá professor, preciso cadastrar o usuário JOAO no banco usado pelo endpoint de sincronização `http://www.datse.com.br/dev/syncjava.php`. No repositório (controle-financeiro) adicionei um SQL de exemplo em `docs/add_user_joao.sql`. Poderia executar o INSERT abaixo no banco do servidor e me confirmar?\n\nINSERT INTO usuarios (login, senha, nome, email) VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao23@gmail.com');\n\nApós aplicar, favor executar o teste HTTP: `curl` ou `Invoke-RestMethod` para enviar `email=joao23@gmail.com` e `senha=1234` ao endpoint e me retornar o body/status para eu validar na aplicação. Obrigado." 
+"Olá professor, preciso cadastrar o usuário JOAO no banco usado pelo endpoint de sincronização `http://www.datse.com.br/dev/syncjava.php`. No repositório (controle-financeiro) adicionei um SQL de exemplo em `docs/add_user_joao.sql`. Poderia executar o INSERT abaixo no banco do servidor e me confirmar?\n\nINSERT INTO usuarios (login, senha, nome, email) VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao23@gmail.com');\n\nApós aplicar, favor executar o teste HTTP: `curl` ou `Invoke-RestMethod` para enviar `email=joao23@gmail.com` e `senha=YOUR_PASSWORD` ao endpoint e me retornar o body/status para eu validar na aplicação. Obrigado." 
 
 ---
 

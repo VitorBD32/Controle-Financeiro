@@ -21,20 +21,20 @@ http://www.datse.com.br/dev/syncjava.php
 ## DIAGNÓSTICO
 
 Foram testados múltiplos formatos de autenticação:
-- `{"login":"JOAO","senha":"1234"}` → Login invalido
-- `{"username":"JOAO","password":"1234"}` → Login invalido  
-- `{"user":"JOAO","pass":"1234"}` → Login invalido
+-- `{"login":"JOAO","senha":"YOUR_PASSWORD"}` → Login invalido
+-- `{"username":"JOAO","password":"YOUR_PASSWORD"}` → Login invalido  
+-- `{"user":"JOAO","pass":"YOUR_PASSWORD"}` → Login invalido
 - Payload sem credenciais → Login invalido
 - Payload não criptografado → Login invalido
 
-**Conclusão:** O usuário "JOAO" com senha "1234" não existe no banco de dados do servidor.
+**Conclusão:** O usuário "JOAO" com senha "YOUR_PASSWORD" não existe no banco de dados do servidor.
 
 ## SOLUÇÃO NECESSÁRIA
 
 ### Opção A: Cadastrar usuário no servidor (PREFERENCIAL)
 Por favor, cadastrar no banco de dados do servidor:
 - **Login/Username:** JOAO
-- **Senha/Password:** 1234
+- **Senha/Password:** YOUR_PASSWORD
 - **Outros campos:** conforme estrutura da tabela de usuários
 
 ### Opção B: Fornecer credenciais válidas
@@ -47,7 +47,7 @@ Se o formato do JSON está incorreto, informar a estrutura esperada pelo endpoin
 ```json
 {
   "user": "JOAO",
-  "password": "1234",
+  "password": "YOUR_PASSWORD",
   "data": {...}
 }
 ```
@@ -58,7 +58,7 @@ Se o formato do JSON está incorreto, informar a estrutura esperada pelo endpoin
 ```json
 {
   "login": "JOAO",
-  "senha": "1234",
+  "senha": "YOUR_PASSWORD",
   "id": 6,
   "tipo": "D",
   "valor": 2000.00,
@@ -119,7 +119,7 @@ Para testar no servidor sem criptografia:
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
   -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
   --data-urlencode "login=JOAO" \
-  --data-urlencode "senha=1234" \
+  --data-urlencode "senha=YOUR_PASSWORD" \
   --data-urlencode "teste=manual"
 ```
 
@@ -127,7 +127,7 @@ Se precisar cadastrar o usuário via SQL:
 ```sql
 -- Exemplo (ajustar conforme estrutura real da tabela)
 INSERT INTO usuarios (login, senha, nome, email) 
-VALUES ('JOAO', MD5('1234'), 'João da Silva', 'joao@exemplo.com');
+VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao@exemplo.com');
 -- OU usar password_hash() se for PHP moderno:
 -- VALUES ('JOAO', '$2y$10$...hash_bcrypt...', 'João', 'joao@exemplo.com');
 ```
@@ -146,7 +146,7 @@ Instruções rápidas para o administrador/professor:
 1. Caso o servidor use um esquema legado que espera MD5, basta executar o bloco MD5 em `docs/add_user_joao.sql` (ajuste nomes de tabela/colunas se necessário).
 2. Se o servidor utiliza bcrypt (recomendado), execute no servidor o script PHP abaixo para gerar o hash e cole no INSERT:
 
-  php -r "echo password_hash('1234', PASSWORD_BCRYPT);"
+  php -r "echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT);"
 
   Ou execute `scripts/generate_add_user_sql.ps1` no host com PowerShell (o script tenta invocar `php` automaticamente quando disponível).
 

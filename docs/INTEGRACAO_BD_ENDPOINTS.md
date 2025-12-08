@@ -122,7 +122,7 @@ A função `pw_match()` no PHP tenta três métodos:
 **Recomendação:** Em produção, use sempre bcrypt. Para criar hash bcrypt:
 
 ```php
-$hash = password_hash('1234', PASSWORD_BCRYPT);
+$hash = password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT);
 // Retorna: $2y$10$...
 ```
 
@@ -209,7 +209,7 @@ Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Body @{ use
 Invoke-RestMethod -Uri 'http://localhost/syncjava2.php' -Method Post -Body @{ email='joao23@gmail.com'; senha='1234' } | ConvertTo-Json
 
 # Teste 3: Basic Auth
-$b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('JOAO:1234'))
+$b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('JOAO:YOUR_PASSWORD'))
 Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Headers @{ Authorization="Basic $b64" } | ConvertTo-Json
 ```
 
@@ -219,10 +219,10 @@ Invoke-RestMethod -Uri 'http://localhost/syncjava.php' -Method Post -Headers @{ 
 curl -X POST http://localhost/syncjava.php -d "username=JOAO&password=YOUR_PASSWORD"
 
 # Teste 2: Basic Auth
-curl -X POST http://localhost/syncjava.php -u JOAO:1234
+curl -X POST http://localhost/syncjava.php -u JOAO:YOUR_PASSWORD
 
 # Teste 3: Via email
-curl -X POST http://localhost/syncjava2.php -d "email=joao23@gmail.com&senha=1234"
+curl -X POST http://localhost/syncjava2.php -d "email=joao23@gmail.com&senha=YOUR_PASSWORD"
 ```
 
 ## 🌐 Deploy no Servidor Remoto (datse.com.br)
