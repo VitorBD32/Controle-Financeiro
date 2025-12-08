@@ -107,21 +107,29 @@ Write-Host "✓ Apache está rodando (PID: $($apacheRunning[0].Id))" -Foreground
 Write-Host "[7/7] Executando testes HTTP..." -ForegroundColor Yellow
 Write-Host ""
 
+# Determine test password from environment or prompt interactively
+$testPassword = $env:TEST_PASSWORD
+if (-not $testPassword) {
+    Write-Host "Info: If you prefer non-interactive tests, set TEST_PASSWORD env var before running this script."
+    $securePwd = Read-Host -AsSecureString "Password for test users (typing will be hidden)"
+    $testPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePwd))
+}
+
 $tests = @(
     @{
         Name = "Teste 1: POST com username/password (syncjava.php)"
         Uri = "http://localhost/syncjava.php"
-        Body = @{ username='JOAO'; password='1234' }
+        Body = @{ username='JOAO'; password=$testPassword }
     },
     @{
         Name = "Teste 2: POST com email/senha (syncjava2.php)"
         Uri = "http://localhost/syncjava2.php"
-        Body = @{ email='joao23@gmail.com'; senha='1234' }
+        Body = @{ email='joao23@gmail.com'; senha=$testPassword }
     },
     @{
         Name = "Teste 3: POST com nome/password (syncjava.php)"
         Uri = "http://localhost/syncjava.php"
-        Body = @{ nome='JOAO'; password='1234' }
+        Body = @{ nome='JOAO'; password=$testPassword }
     },
     @{
         Name = "Teste 4: POST com encrypted_data (fallback)"
@@ -178,5 +186,5 @@ if ($successCount -gt 0) {
     Write-Host "  3. Usuário JOAO está cadastrado?" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Execute para inserir JOAO:" -ForegroundColor Cyan
-    Write-Host '  & "C:\xampp\mysql\bin\mysql.exe" -uroot prova1 -e "INSERT INTO usuarios (nome, email, senha) VALUES (''JOAO'', ''joao23@gmail.com'', ''1234'');"' -ForegroundColor Gray
+    Write-Host '  & "C:\xampp\mysql\bin\mysql.exe" -uroot prova1 -e "INSERT INTO usuarios (nome, email, senha) VALUES (''JOAO'', ''joao23@gmail.com'', ''YOUR_PASSWORD'');"' -ForegroundColor Gray
 }

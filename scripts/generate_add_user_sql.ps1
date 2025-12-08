@@ -10,10 +10,16 @@
 
 param(
     [string]$User = 'JOAO',
-    [string]$Password = '1234',
+    [string]$Password = $env:TEST_PASSWORD,
     [string]$Name = 'João da Silva',
     [string]$Email = 'joao@exemplo.com'
 )
+
+if (-not $Password -or $Password -eq '') {
+    Write-Host "Info: If you prefer non-interactive execution, set TEST_PASSWORD env var before running this script."
+    $securePwd = Read-Host -AsSecureString "Password for user (typing will be hidden)"
+    $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePwd))
+}
 
 Write-Host "-- Gerando SQL para usuário: $User`n"
 
@@ -33,11 +39,11 @@ try {
         $bcryptSql = "INSERT INTO usuarios (login, senha, nome, email) VALUES ('$User', '$hash', '$Name', '$Email');"
         Write-Host $bcryptSql
     } else {
-        Write-Host "-- Falha ao gerar hash via PHP — gere manualmente com: php -r \"echo password_hash('1234', PASSWORD_BCRYPT);\""
+        Write-Host "-- Falha ao gerar hash via PHP — gere manualmente com: php -r \"echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT);\""
     }
 } catch {
     Write-Host "-- PHP não encontrado. Para gerar o hash bcrypt execute no servidor (PHP):"
-    Write-Host "-- php -r \"echo password_hash('1234', PASSWORD_BCRYPT);\""
+    Write-Host "-- php -r \"echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT);\""
     Write-Host "-- Substitua o hash no exemplo abaixo e execute no banco:"
     Write-Host "-- INSERT INTO usuarios (login, senha, nome, email) VALUES ('$User', '\$2y\$...hash...', '$Name', '$Email');"
 }

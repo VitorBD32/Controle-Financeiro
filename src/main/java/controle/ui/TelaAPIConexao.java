@@ -88,7 +88,8 @@ public class TelaAPIConexao extends JFrame {
         gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
         panelConfig.add(new JLabel("Senha:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
-        txtSenha = new JPasswordField("1234", 20);
+        // Do not prefill password to avoid accidental exposure of credentials
+        txtSenha = new JPasswordField(20);
         panelConfig.add(txtSenha, gbc);
 
         // Botões
