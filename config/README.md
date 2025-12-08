@@ -14,3 +14,10 @@ pre-commit install
 ```
 
 This repository includes a pre-commit configuration based on `detect-secrets` which will help flag accidental secrets during commit.
+
+Generate default detect-secrets baseline:
+1. Install detect-secrets: `pip install detect-secrets`
+2. Run the scanner and save baseline: `detect-secrets scan > .secrets.baseline`
+3. Review the baseline and then commit: `git add .secrets.baseline && git commit -m "chore: add detect-secrets baseline"`
+
+If the baseline flags secrets that are false positives, add them to the baseline using `detect-secrets`'s CLI and re-run.
