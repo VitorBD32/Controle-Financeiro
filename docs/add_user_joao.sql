@@ -1,13 +1,12 @@
--- Arquivo: docs/add_user_joao.sql
--- Finalidade: comandos SQL de exemplo para cadastrar o usuário JOAO no banco do servidor.
--- Atenção: ajuste nomes de tabela/colunas conforme o schema real do servidor antes de executar.
+-- Arquivo: docs/add_user_joao.sql (renamed to add_user_example.sql)
+-- Este arquivo remanescente foi mantido por compatibilidade, mas contém apenas exemplos neutros
+-- Use preferencialmente: docs/add_user_example.sql
 
--- Opção A1: Inserção usando MD5 (legado) - útil para servidores antigos
--- OBS: MD5 é fraco; use apenas se o servidor espera esse formato.
 INSERT INTO usuarios (login, senha, nome, email) 
-VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao@exemplo.com');
+VALUES ('YOUR_USER', MD5('YOUR_PASSWORD'), 'User Example', 'user@example.com');
 
--- Gere o hash bcrypt no servidor (ex.: em PHP: password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT)) e cole o valor abaixo.
--- VALUES ('JOAO', '$2y$10$.......................................', 'João da Silva', 'joao@exemplo.com');
+
+VALUES ('YOUR_USER', MD5('YOUR_PASSWORD'), 'User Example', 'user@example.com');
+-- VALUES ('YOUR_USER', '$2y$10$.......................................', 'User Example', 'user@example.com');
 
 -- Nota: se a tabela de usuários tiver campos diferentes (por exemplo id, username, password, fullname), adapte os nomes.

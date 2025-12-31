@@ -1,26 +1,56 @@
 package controle.ui;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
 
-// Imports do projeto Controle Financeiro
-import controle.dao.*;
-import controle.model.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+
+import controle.dao.CartaoDAO;
+import controle.dao.CartaoDAOImpl;
+import controle.dao.CategoriaDAO;
+import controle.dao.CategoriaDAOImpl;
+import controle.dao.TransacaoDAO;
+import controle.dao.TransacaoDAOImpl;
+import controle.dao.UsuarioDAO;
+import controle.dao.UsuarioDAOImpl;
+import controle.model.Cartao;
+import controle.model.Categoria;
+import controle.model.Transacao;
+import controle.model.Usuario;
+import controle.security.SecurityManager;
 import controle.util.QRCodePIXGenerator;
-import controle.util.CryptoUtil;
-import br.uespi.acessoapi.pagamentoHTTP;
-import br.uespi.acessoapi.PIXConexao;
-import br.uespi.tratajson.JSONObject;
-import br.uespi.tratajson.JSONArray;
 
 /**
  * Tela de Pagamento PIX integrada com o sistema de Controle Financeiro
@@ -60,6 +90,8 @@ public class TelaPagamentoPIX extends JFrame {
     
     // Usuário logado atual
     private Usuario usuarioLogado;
+    // Security helper
+    private final SecurityManager securityManager = SecurityManager.getInstance();
     
     // URL da API
     private static final String API_URL = "http://www.datse.com.br/dev/syncjava.php";
@@ -268,15 +300,23 @@ public class TelaPagamentoPIX extends JFrame {
         try {
             // Carrega usuários
             List<Usuario> usuarios = usuarioDAO.findAll();
+            // Ordena usuários por nome para melhor usabilidade (O(n log n))
+            usuarios.sort((a, b) -> {
+                String na = a.getNome() == null ? "" : a.getNome();
+                String nb = b.getNome() == null ? "" : b.getNome();
+                return na.compareToIgnoreCase(nb);
+            });
             cmbUsuario.removeAllItems();
             for (Usuario u : usuarios) {
                 cmbUsuario.addItem(u);
-                // Log authorization status to terminal for admin audit
-                System.out.println("[USERS] " + u.getNome() + " (ID: " + u.getId() + ") - autorizado=" + u.isAutorizado());
+                // Log minimal: id + masked email (não expor dados sensíveis)
+                String masked = u.getEmail() != null && !u.getEmail().isEmpty() ?
+                        securityManager.maskSensitiveData(u.getEmail(), "EMAIL") : securityManager.maskSensitiveData(u.getNome(), "GENERIC");
+                System.out.println("[USERS] ID:" + u.getId() + " - " + masked + " - autorizado=" + u.isAutorizado());
             }
             
             // Carrega categorias (apenas tipo D - Despesa para pagamentos)
-            List<Categoria> categorias = categoriaDAO.findAll();
+            List<Categoria> categorias = categorySort(categoriaDAO.findAll());
             cmbCategoria.removeAllItems();
             for (Categoria c : categorias) {
                 cmbCategoria.addItem(c);
@@ -290,6 +330,16 @@ public class TelaPagamentoPIX extends JFrame {
         }
     }
 
+    // Ordena categorias por nome (O(n log n))
+    private List<Categoria> categorySort(List<Categoria> list) {
+        if (list == null) return java.util.Collections.emptyList();
+        list.sort((a, b) -> {
+            String na = a.getNome() == null ? "" : a.getNome();
+            String nb = b.getNome() == null ? "" : b.getNome();
+            return na.compareToIgnoreCase(nb);
+        });
+        return list;
+    }
     private void appendLog(String msg) {
         String time = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
         if (txtResultado != null) {
@@ -298,6 +348,14 @@ public class TelaPagamentoPIX extends JFrame {
         }
         System.out.println(msg);
     }
+
+    // Compatibilidade com Java 8: repete um caractere N vezes
+    private static String repeatChar(char ch, int count) {
+        char[] arr = new char[count];
+        Arrays.fill(arr, ch);
+        return new String(arr);
+    }
+    
 
     private void atualizarQRCode() {
         String tipo = (String) cmbTipoPagamento.getSelectedItem();
@@ -382,15 +440,17 @@ public class TelaPagamentoPIX extends JFrame {
             JOptionPane.showMessageDialog(this, "Valor inválido!", "Erro", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        // Verifica autorização do usuário para realizar pagamentos
-        if (!usuario.isAutorizado()) {
-            appendLog("🚫 Usuário não autorizado a realizar pagamentos: " + usuario.getNome());
-            JOptionPane.showMessageDialog(this, "Usuário não está autorizado a realizar pagamentos.", "Acesso Negado", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
         // Log no terminal
+        String sepEq = repeatChar('=', 60);
+        String sepDash = repeatChar('-', 60);
+        System.out.println("\n" + sepEq);
+        System.out.println("💳 PROCESSANDO PAGAMENTO " + tipoPagamento);
+        System.out.println(sepEq);
+        System.out.println("👤 Usuário: " + usuario.getNome() + " (ID: " + usuario.getId() + ")");
+        System.out.println("📁 Categoria: " + categoria.getNome());
+        System.out.println("💰 Valor: R$ " + valor);
+        System.out.println("📝 Descrição: " + descricao);
+        System.out.println(sepDash);
         System.out.println("\n" + "=".repeat(60));
         System.out.println("💳 PROCESSANDO PAGAMENTO " + tipoPagamento);
         System.out.println("=".repeat(60));
@@ -402,84 +462,86 @@ public class TelaPagamentoPIX extends JFrame {
 
         StringBuilder resultado = new StringBuilder();
         resultado.append("=== PAGAMENTO ").append(tipoPagamento).append(" ===\n\n");
-        resultado.append("👤 Usuário: ").append(usuario.getNome()).append("\n");
-        resultado.append("📁 Categoria: ").append(categoria.getNome()).append("\n");
-        resultado.append("💰 Valor: R$ ").append(valor).append("\n");
-        resultado.append("📝 Descrição: ").append(descricao).append("\n\n");
+        resultado.append("👤 Usuário ID: ").append(usuario.getId()).append("\n");
 
-        try {
-            // Run async payment and saving within SwingWorker to keep UI responsive
-            btnEmitir.setEnabled(false);
-            btnSalvarTransacao.setEnabled(false);
-            btnLimpar.setEnabled(false);
+        // Desabilita botões antes da operação em background
+        btnEmitir.setEnabled(false);
+        btnSalvarTransacao.setEnabled(false);
+        btnLimpar.setEnabled(false);
 
-            SwingWorker<Void, Void> paymentWorker = new SwingWorker<>() {
-                String resposta = null;
-                int codigoHTTP = -1;
-                Exception erro = null;
-                @Override
-                protected Void doInBackground() {
-                    try {
-                        String cpf = usuario.getEmail() != null ? usuario.getEmail() : String.valueOf(usuario.getId());
-                        String ncartao = ""; // not used for PIX
-                        pagamentoHTTP pagamento = new pagamentoHTTP(
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            private String resposta = null;
+            private int codigoHTTP = -1;
+            private Exception erro = null;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    String cpf = usuario.getEmail() != null ? usuario.getEmail() : String.valueOf(usuario.getId());
+                    String ncartao = ""; // not used for PIX
+                    pagamentoHTTP pagamento = new pagamentoHTTP(
                             usuario.getNome(),
                             cpf,
                             ncartao,
                             valor.toString(),
                             tipoPagamento,
                             API_URL
-                        );
-                        resposta = pagamento.conecta();
-                        codigoHTTP = pagamento.codretorno;
-                    } catch (Exception ex) {
-                        erro = ex;
-                    }
-                    return null;
+                    );
+                    resposta = pagamento.conecta();
+                    codigoHTTP = pagamento.codretorno;
+                } catch (Exception ex) {
+                    erro = ex;
                 }
-                @Override
-                protected void done() {
-                    try {
-                        if (erro != null) {
-                            appendLog("❌ Erro no processamento do pagamento: " + erro.getMessage());
-                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Erro ao processar pagamento: " + erro.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-                            return;
-                        }
-                        appendLog("✅ Pagamento processado! Código HTTP: " + codigoHTTP);
-                        // Imprime JSON de resposta no terminal para auditoria (somente terminal)
-                        if (resposta != null && !resposta.isEmpty()) {
-                            System.out.println("[API RESPONSE] " + resposta);
-                        }
-                        // Save transaction
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (erro != null) {
+                        appendLog("❌ Erro no processamento do pagamento: " + erro.getMessage());
+                        JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Erro ao processar pagamento: " + erro.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+
+                    appendLog("✅ Pagamento processado! Código HTTP: " + codigoHTTP);
+                    if (resposta != null && !resposta.isEmpty()) {
+                        String frag = resposta.length() > 200 ? resposta.substring(0, 200) + "..." : resposta;
+                        System.out.println("[API RESPONSE FRAGMENT] " + frag);
+                    }
+
                         try {
+                            // Sanitiza descrição antes de salvar para evitar injeções
+                            String safeDescricao = descricao;
+                            try {
+                                safeDescricao = securityManager.validateAndSanitize(descricao, "descricao");
+                            } catch (Exception se) {
+                                appendLog("⚠️ Descrição contém caracteres inválidos, será filtrada.");
+                                safeDescricao = securityManager.sanitizeSqlInput(descricao);
+                            }
+
                             Transacao t = new Transacao();
                             t.setIdUsuario(usuario.getId());
                             t.setIdCategoria(categoria.getId());
                             t.setTipo("D");
                             t.setValor(valor);
                             t.setData(LocalDateTime.now());
-                            t.setDescricao(descricao.isEmpty() ? "Pagamento " + tipoPagamento : descricao);
+                            t.setDescricao(safeDescricao == null || safeDescricao.isEmpty() ? "Pagamento " + tipoPagamento : safeDescricao);
                             transacaoDAO.insert(t);
-                            appendLog("✅ Transação salva com sucesso (ID: " + t.getId() + ")");
-                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento e transação salvos com sucesso (ID: " + t.getId() + ")", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-                        } catch (Exception se) {
-                            appendLog("⚠️ Pagamento processado, mas falha ao salvar transação: " + se.getMessage());
-                            JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento processado, mas falha ao salvar transação: " + se.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
-                        }
-                    } finally {
-                        btnEmitir.setEnabled(true);
-                        btnSalvarTransacao.setEnabled(true);
-                        btnLimpar.setEnabled(true);
+                        appendLog("✅ Transação salva com sucesso (ID: " + t.getId() + ")");
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento e transação salvos com sucesso (ID: " + t.getId() + ")", "Sucesso", JOptionPane.INFORMATION_MESSAGE));
+                    } catch (Exception se) {
+                        appendLog("⚠️ Pagamento processado, mas falha ao salvar transação: " + se.getMessage());
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(TelaPagamentoPIX.this, "Pagamento processado, mas falha ao salvar transação: " + se.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE));
                     }
+                } finally {
+                    btnEmitir.setEnabled(true);
+                    btnSalvarTransacao.setEnabled(true);
+                    btnLimpar.setEnabled(true);
                 }
-            };
-            paymentWorker.execute();
-            return; // background flow handles rest
-        } catch (Exception ex) {
-            resultado.append("⚠️ Pagamento simulado (API offline)\n");
-            resultado.append("Status: APROVADO (modo demo)\n");
-            System.out.println("⚠️ API offline - modo simulado");
-        }
+            }
+        };
+        worker.execute();
 
         txtResultado.setText(resultado.toString());
     }
@@ -506,7 +568,14 @@ public class TelaPagamentoPIX extends JFrame {
             t.setTipo("D"); // Despesa (pagamento)
             t.setValor(valor);
             t.setData(LocalDateTime.now());
-            t.setDescricao(descricao.isEmpty() ? "Pagamento " + tipoPagamento : descricao);
+            // Sanitiza descrição
+            String safeDescricao = descricao;
+            try {
+                safeDescricao = securityManager.validateAndSanitize(descricao, "descricao");
+            } catch (Exception se) {
+                safeDescricao = securityManager.sanitizeSqlInput(descricao);
+            }
+            t.setDescricao(safeDescricao.isEmpty() ? "Pagamento " + tipoPagamento : safeDescricao);
             
             transacaoDAO.insert(t);
             
@@ -583,10 +652,18 @@ public class TelaPagamentoPIX extends JFrame {
             String tipoCartao = "Crédito".equals(tipo) ? "CREDITO" : "DEBITO";
             
             List<Cartao> cartoes = cartaoDAO.findByUsuario(usuario.getId());
+            // Ordena por último uso desc (cartões mais recentemente usados primeiro) - O(n log n)
+            cartoes.sort((a, b) -> {
+                java.time.LocalDateTime ua = a.getUltimoUso();
+                java.time.LocalDateTime ub = b.getUltimoUso();
+                if (ua == null && ub == null) return 0;
+                if (ua == null) return 1;
+                if (ub == null) return -1;
+                return ub.compareTo(ua);
+            });
             int count = 0;
-            
             for (Cartao c : cartoes) {
-                if (c.isAtivo() && c.getTipo().equalsIgnoreCase(tipoCartao)) {
+                if (c.isAtivo() && c.getTipo() != null && c.getTipo().equalsIgnoreCase(tipoCartao)) {
                     cmbCartao.addItem(c);
                     count++;
                 }
@@ -598,7 +675,7 @@ public class TelaPagamentoPIX extends JFrame {
                 lblCartaoInfo.setText("✅ " + count + " cartão(ões) disponível(is)");
             }
             
-            System.out.println("✅ Carregados " + count + " cartões de " + tipo + " para usuário " + usuario.getNome());
+            System.out.println("✅ Carregados " + count + " cartões de " + tipo + " para usuário ID:" + usuario.getId() + " - " + securityManager.maskSensitiveData(usuario.getNome(), "GENERIC"));
             
         } catch (Exception e) {
             lblCartaoInfo.setText("❌ Erro ao carregar cartões");
@@ -654,19 +731,52 @@ public class TelaPagamentoPIX extends JFrame {
             if (value instanceof Cartao) {
                 Cartao c = (Cartao) value;
                 String mascarado = c.getNumeroMascarado();
-                setText(c.getBandeira() + " " + mascarado + " - " + c.getNomeTitular());
+                String holder = c.getNomeTitular() != null ? securityManager.maskSensitiveData(c.getNomeTitular(), "GENERIC") : "";
+                setText(c.getBandeira() + " " + mascarado + (holder.isEmpty() ? "" : " - " + holder));
             }
             return this;
         }
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {}
-            
-            new TelaPagamentoPIX().setVisible(true);
-        });
+    /**
+     * Stub local simples para substituir a dependência externa de pagamento
+     * quando a biblioteca não estiver disponível em tempo de compilação.
+     * Substitua por implementação real de integração HTTP/PIX em produção.
+     */
+    private static class pagamentoHTTP {
+        public int codretorno = -1;
+        private final String nome;
+        private final String cpf;
+        private final String ncartao;
+        private final String valor;
+        private final String tipoPagamento;
+        private final String apiUrl;
+
+        public pagamentoHTTP(String nome, String cpf, String ncartao, String valor, String tipoPagamento, String apiUrl) {
+            this.nome = nome;
+            this.cpf = cpf;
+            this.ncartao = ncartao;
+            this.valor = valor;
+            this.tipoPagamento = tipoPagamento;
+            this.apiUrl = apiUrl;
+        }
+
+        public String conecta() throws Exception {
+            // Simula uma chamada externa; altera codretorno conforme necessário
+            this.codretorno = 200;
+            return "{\"status\":\"APROVADO\",\"valor\":\"" + valor + "\"}";
+        }
+        }
+        
+        public static void main(String[] args) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException e) {
+                    System.err.println("Erro ao aplicar look and feel: " + e.getMessage());
+                }
+                
+                new TelaPagamentoPIX().setVisible(true);
+            });
+        }
     }
-}

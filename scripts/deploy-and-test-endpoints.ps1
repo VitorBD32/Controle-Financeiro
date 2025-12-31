@@ -119,17 +119,17 @@ $tests = @(
     @{
         Name = "Teste 1: POST com username/password (syncjava.php)"
         Uri = "http://localhost/syncjava.php"
-        Body = @{ username='JOAO'; password=$testPassword }
+        Body = @{ username='YOUR_USER'; password=$testPassword }
     },
     @{
         Name = "Teste 2: POST com email/senha (syncjava2.php)"
         Uri = "http://localhost/syncjava2.php"
-        Body = @{ email='joao23@gmail.com'; senha=$testPassword }
+        Body = @{ email='user@example.com'; senha=$testPassword }
     },
     @{
         Name = "Teste 3: POST com nome/password (syncjava.php)"
         Uri = "http://localhost/syncjava.php"
-        Body = @{ nome='JOAO'; password=$testPassword }
+        Body = @{ nome='YOUR_USER'; password=$testPassword }
     },
     @{
         Name = "Teste 4: POST com encrypted_data (fallback)"
@@ -183,8 +183,8 @@ if ($successCount -gt 0) {
     Write-Host "⚠ Nenhum teste passou. Verifique:" -ForegroundColor Yellow
     Write-Host "  1. Apache e MySQL estão rodando?" -ForegroundColor Gray
     Write-Host "  2. Banco prova1 existe e tem tabela usuarios?" -ForegroundColor Gray
-    Write-Host "  3. Usuário JOAO está cadastrado?" -ForegroundColor Gray
+    Write-Host "  3. Usuário YOUR_USER está cadastrado?" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Execute para inserir JOAO:" -ForegroundColor Cyan
-    Write-Host '  & "C:\xampp\mysql\bin\mysql.exe" -uroot prova1 -e "INSERT INTO usuarios (nome, email, senha) VALUES (''JOAO'', ''joao23@gmail.com'', ''YOUR_PASSWORD'');"' -ForegroundColor Gray
+    Write-Host "Execute para inserir um usuário de exemplo (ex: YOUR_USER):" -ForegroundColor Cyan
+    Write-Host '  & "C:\xampp\mysql\bin\mysql.exe" -uroot prova1 -e "INSERT INTO usuarios (nome, email, senha) VALUES (''YOUR_USER'', ''user@example.com'', ''YOUR_PASSWORD'');"' -ForegroundColor Gray
 }

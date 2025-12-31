@@ -1,23 +1,39 @@
 package controle.util;
 
-import controle.model.Boleto;
-import controle.model.NotaFiscal;
-import controle.model.Usuario;
-import controle.model.Transacao;
-import controle.dao.SistemaConfigDAO;
-
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.awt.print.*;
-import java.io.*;
+import java.awt.print.Printable;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import controle.dao.SistemaConfigDAO;
+import controle.model.Boleto;
+import controle.model.NotaFiscal;
+import controle.model.Transacao;
+import controle.model.Usuario;
 
 /**
  * Gerador de Boletos e Notas Fiscais em formato imprimível
@@ -389,15 +405,55 @@ public class DocumentoFiscalGenerator {
         
         y += 5;
         g2.setColor(CINZA_CLARO);
-        g2.fillRect(margin, y, width - 2*margin, 80);
+        g2.fillRect(margin, y, width - 2*margin, 95);
         
-        y += 20;
+        y += 18;
         g2.setColor(Color.BLACK);
         g2.setFont(new Font("Arial", Font.BOLD, 10));
         
-        // IBS
+        // CBS (Federal)
+        g2.drawString("CBS (Contribuição sobre Bens e Serviços):", col1, y);
+        g2.setFont(new Font("Arial", Font.PLAIN, 10));
+        BigDecimal cbsVal = nf.getValorCBS() != null ? nf.getValorCBS() : BigDecimal.ZERO;
+        g2.drawString("Alíq: " + (nf.getAliquotaCbs() != null ? nf.getAliquotaCbs().multiply(new BigDecimal("100")).setScale(2) + "%" : "8.8%") + 
+                      "  Valor: " + CURRENCY_FORMAT.format(cbsVal), col1 + 300, y);
+        
+        y += 15;
+        g2.setFont(new Font("Arial", Font.BOLD, 10));
+        // IBS (Estadual/Municipal)
         g2.drawString("IBS (Imposto sobre Bens e Serviços):", col1, y);
         g2.setFont(new Font("Arial", Font.PLAIN, 10));
+        BigDecimal ibsVal = nf.getValorIBS() != null ? nf.getValorIBS() : BigDecimal.ZERO;
+        g2.drawString("Alíq: " + (nf.getAliquotaIbs() != null ? nf.getAliquotaIbs().multiply(new BigDecimal("100")).setScale(2) + "%" : "15.0%") + 
+                      "  Valor: " + CURRENCY_FORMAT.format(ibsVal), col1 + 300, y);
+        
+        y += 15;
+        g2.setFont(new Font("Arial", Font.BOLD, 10));
+        // IS (Seletivo)
+        g2.drawString("IS (Imposto Seletivo):", col1, y);
+        g2.setFont(new Font("Arial", Font.PLAIN, 10));
+        BigDecimal isVal = nf.getValorIS() != null ? nf.getValorIS() : BigDecimal.ZERO;
+        g2.drawString("Alíq: " + (nf.getAliquotaIs() != null ? nf.getAliquotaIs().multiply(new BigDecimal("100")).setScale(2) + "%" : "0.0%") + 
+                      "  Valor: " + CURRENCY_FORMAT.format(isVal), col1 + 300, y);
+        
+        y += 15;
+        g2.setColor(LINHA);
+        g2.drawLine(margin + 5, y, width - margin - 5, y);
+        y += 12;
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.BOLD, 11));
+        BigDecimal totalTribNew = cbsVal.add(ibsVal).add(isVal);
+        g2.drawString("TOTAL DE TRIBUTOS (REFORMA 2026):", col1, y);
+        g2.drawString(CURRENCY_FORMAT.format(totalTribNew), col1 + 300, y);
+        
+        y += 5;
+        g2.setFont(new Font("Arial", Font.ITALIC, 9));
+        g2.setColor(Color.DARK_GRAY);
+        String localizacao = "UF: " + (nf.getUfEmitente() != null ? nf.getUfEmitente() : nf.getEmitenteUf() != null ? nf.getEmitenteUf() : "N/A");
+        if (nf.getMunicipioEmitente() != null && !nf.getMunicipioEmitente().isEmpty()) {
+            localizacao += " | Município: " + nf.getMunicipioEmitente();
+        }
+        g2.drawString(localizacao, col1, y);
         g2.drawString("Base: " + CURRENCY_FORMAT.format(nf.getBaseCalculoIbs()), col2, y);
         g2.drawString("Alíquota: " + nf.getAliquotaIbs().multiply(new BigDecimal("100")).setScale(2) + "%", col3, y);
         g2.setFont(new Font("Arial", Font.BOLD, 10));

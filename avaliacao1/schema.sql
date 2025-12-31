@@ -88,7 +88,7 @@ ON DUPLICATE KEY UPDATE valor = VALUES(valor);
 -- Dados de exemplo
 INSERT INTO usuarios (nome, email, senha, is_admin) VALUES
     ('Admin', 'admin@controle.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIHgYqBbAZ5sFzKqW3JCgpLCzNsxKkDi', TRUE),
-    ('João Silva', 'joao@email.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIHgYqBbAZ5sFzKqW3JCgpLCzNsxKkDi', FALSE),
+    ('User Example', 'user@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIHgYqBbAZ5sFzKqW3JCgpLCzNsxKkDi', FALSE),
     ('Maria Santos', 'maria@email.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIHgYqBbAZ5sFzKqW3JCgpLCzNsxKkDi', FALSE)
 ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 

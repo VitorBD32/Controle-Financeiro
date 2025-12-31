@@ -116,12 +116,26 @@ Onde procurar código/arquivos relevantes
 - `avaliacao1/` — scripts SQL para criação de esquema, impostos e tabelas de segurança.
 
 Como contribuir / desenvolvimento
---------------------------------
 1. Faça um fork ou clone do repositório.
 2. Crie uma branch para a sua feature: `git checkout -b feature/minha-feature`.
 3. Siga a convenção de commits: `feat:`, `fix:`, `refactor:` e `docs:`.
 4. Teste localmente com `build.ps1` ou Maven (se for utilizar Maven).
 5. Abra um PR com a descrição das mudanças e um resumo dos possíveis impactos.
+
+Admin initialization (first-run)
+--------------------------------
+On first run, the application will prompt to create an initial administrator account if none exists. Alternatively, you can create an admin user from the CLI using the `InitAdmin` utility:
+
+```powershell
+# Example: create admin user (prompt for password if TEST_PASSWORD is not set)
+java -cp target/classes;lib/* controle.util.InitAdmin --user=admin --email=admin@example.com --name="Admin User"
+
+# Or via helper script (Windows PowerShell):
+.
+scripts\init-admin.ps1 -User admin -Email admin@example.com -Name "Admin User" -Password (Read-Host -AsSecureString "Admin Password")
+```
+
+Use the GUI admin dialog for on-first-run or the CLI for automation/CI-enabled environments.
 
 Licença
 -------

@@ -194,4 +194,19 @@ public class UsuarioDAOImpl implements UsuarioDAO {
             return ps.executeUpdate() > 0;
         }
     }
+
+    @Override
+    public boolean existsAdmin() throws Exception {
+        String sql = "SELECT 1 FROM usuarios WHERE admin = 1 LIMIT 1";
+        try (Connection conn = Conexao.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        } catch (SQLException ex) {
+            // If the 'admin' column does not exist return false
+            String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+            if (msg.contains("unknown column") || msg.contains("no such column")) {
+                return false;
+            }
+            throw ex;
+        }
+    }
 }

@@ -1,14 +1,50 @@
 package controle.ui;
 
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JProgressBar;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.Timer;
+import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+
+import org.mindrot.jbcrypt.BCrypt;
 
 import controle.dao.UsuarioDAO;
 import controle.dao.UsuarioDAOImpl;
 import controle.model.Usuario;
-import org.mindrot.jbcrypt.BCrypt;
 
 /**
  * Tela de Login Principal - Ponto de entrada do sistema
@@ -37,7 +73,121 @@ public class TelaLoginPrincipal extends JFrame {
     public TelaLoginPrincipal() {
         super("Controle Financeiro - Login Seguro");
         initComponents();
+        // Ensure an admin user exists on first-run; if not, prompt to create one
+        ensureAdminExists();
         setupKeyBindings();
+    }
+
+    private void ensureAdminExists() {
+        try {
+            boolean hasAdmin = usuarioDAO.existsAdmin();
+            if (!hasAdmin) {
+                // Show admin setup dialog
+                SwingUtilities.invokeLater(() -> showAdminSetupDialog());
+            }
+        } catch (Exception ex) {
+            // If we cannot access DB here, just log and continue
+            System.err.println("[WARN] Could not check for admin existence: " + ex.getMessage());
+        }
+    }
+
+    private void showAdminSetupDialog() {
+        JDialog dialog = new JDialog(this, "Inicializar Administrador", true);
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBorder(new EmptyBorder(20, 30, 20, 30));
+        formPanel.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField txtNome = new JTextField(25);
+        JTextField txtEmailCad = new JTextField(25);
+        JPasswordField txtSenhaCad = new JPasswordField(25);
+        JPasswordField txtConfirmaSenha = new JPasswordField(25);
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        formPanel.add(new JLabel("Nome completo (Admin):"), gbc);
+        gbc.gridy = 1;
+        formPanel.add(txtNome, gbc);
+        gbc.gridy = 2;
+        formPanel.add(new JLabel("Email (Admin):"), gbc);
+        gbc.gridy = 3;
+        formPanel.add(txtEmailCad, gbc);
+        gbc.gridy = 4;
+        formPanel.add(new JLabel("Senha (Admin):"), gbc);
+        gbc.gridy = 5;
+        formPanel.add(txtSenhaCad, gbc);
+        gbc.gridy = 6;
+        formPanel.add(new JLabel("Confirmar senha:"), gbc);
+        gbc.gridy = 7;
+        formPanel.add(txtConfirmaSenha, gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBackground(Color.WHITE);
+        JButton btnCriar = new JButton("Criar Admin");
+        btnCriar.setBackground(PRIMARY_COLOR);
+        btnCriar.setForeground(Color.WHITE);
+        JButton btnCancelar = new JButton("Cancelar");
+
+        btnCriar.addActionListener(evt -> {
+            String nome = txtNome.getText().trim();
+            String emailCad = txtEmailCad.getText().trim();
+            String senhaCad = new String(txtSenhaCad.getPassword());
+            String confirmaSenha = new String(txtConfirmaSenha.getPassword());
+
+            if (nome.isEmpty() || emailCad.isEmpty() || senhaCad.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Preencha todos os campos!", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!senhaCad.equals(confirmaSenha)) {
+                JOptionPane.showMessageDialog(dialog, "As senhas não coincidem!", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (senhaCad.length() < 8) {
+                JOptionPane.showMessageDialog(dialog, "A senha deve ter pelo menos 8 caracteres!", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                // Ensure no admin exists (race condition safety)
+                if (usuarioDAO.existsAdmin()) {
+                    JOptionPane.showMessageDialog(dialog, "Já existe um administrador no sistema.", "Atenção", JOptionPane.INFORMATION_MESSAGE);
+                    dialog.dispose();
+                    return;
+                }
+
+                Usuario novoAdmin = new Usuario();
+                novoAdmin.setNome(nome);
+                novoAdmin.setEmail(emailCad);
+                novoAdmin.setSenha(BCrypt.hashpw(senhaCad, BCrypt.gensalt()));
+                novoAdmin.setAutorizado(true);
+                novoAdmin.setAdmin(true);
+
+                usuarioDAO.insert(novoAdmin);
+
+                JOptionPane.showMessageDialog(dialog, "Administrador criado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dialog, "Falha ao criar administrador: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        });
+
+        btnCancelar.addActionListener(evt -> dialog.dispose());
+
+        buttonPanel.add(btnCancelar);
+        buttonPanel.add(btnCriar);
+
+        dialog.add(formPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private void initComponents() {

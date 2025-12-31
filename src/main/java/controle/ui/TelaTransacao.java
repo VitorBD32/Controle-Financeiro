@@ -32,6 +32,7 @@ import controle.dao.UsuarioDAOImpl;
 import controle.model.Categoria;
 import controle.model.Transacao;
 import controle.model.Usuario;
+import controle.security.SecurityManager;
 
 public class TelaTransacao extends JFrame {
 
@@ -60,6 +61,7 @@ public class TelaTransacao extends JFrame {
     private JButton btnAdminSettings;
     private JButton btnExportPdf;
     private Usuario loggedUser = null;
+    private final SecurityManager securityManager = SecurityManager.getInstance();
 
     public TelaTransacao() {
         super("Transações");
@@ -333,9 +335,18 @@ public class TelaTransacao extends JFrame {
 
         try {
             controle.model.Categoria c = new controle.model.Categoria();
-            c.setNome(nome.trim());
+            // Sanitiza entradas
+            String safeNome;
+            try {
+                safeNome = securityManager.validateAndSanitize(nome.trim(), "categoria_nome");
+            } catch (Exception se) {
+                safeNome = securityManager.sanitizeSqlInput(nome.trim());
+            }
+            String safeDesc = desc == null ? "" : securityManager.sanitizeSqlInput(desc);
+
+            c.setNome(safeNome);
             c.setTipo(tipo != null && !tipo.isEmpty() ? tipo : "D");
-            c.setDescricao(desc);
+            c.setDescricao(safeDesc);
             catDao.insert(c);
             loadCombos();
             // select created category
@@ -373,8 +384,20 @@ public class TelaTransacao extends JFrame {
             return;
         }
         try {
+            // Validação e sanitização básica
+            if (!securityManager.isValidEmail(email)) {
+                javax.swing.JOptionPane.showMessageDialog(this, "E-mail inválido.");
+                return;
+            }
+            String safeNome;
+            try {
+                safeNome = securityManager.validateAndSanitize(nome, "nome");
+            } catch (Exception se) {
+                safeNome = securityManager.sanitizeSqlInput(nome);
+            }
+
             controle.model.Usuario u = new controle.model.Usuario();
-            u.setNome(nome);
+            u.setNome(safeNome);
             u.setEmail(email);
             u.setSenha(senha);
             userDao.insert(u);
@@ -454,7 +477,14 @@ public class TelaTransacao extends JFrame {
             t.setTipo(tipo);
             t.setValor(valor);
             t.setData(data);
-            t.setDescricao(tfDescricao.getText());
+            // Sanitiza descrição
+            String safeDesc;
+            try {
+                safeDesc = securityManager.validateAndSanitize(tfDescricao.getText(), "descricao");
+            } catch (Exception se) {
+                safeDesc = securityManager.sanitizeSqlInput(tfDescricao.getText());
+            }
+            t.setDescricao(safeDesc);
             transDao.insert(t);
             loadData();
             clearForm();

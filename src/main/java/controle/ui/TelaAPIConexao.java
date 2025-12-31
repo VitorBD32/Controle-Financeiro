@@ -74,14 +74,18 @@ public class TelaAPIConexao extends JFrame {
         gbc.gridx = 0; gbc.gridy = 0;
         panelConfig.add(new JLabel("URL da API:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
-        txtUrl = new JTextField("http://www.datse.com.br/dev/syncjava.php", 40);
+        String defaultUrl = controle.config.APIConfig.getSyncUrl();
+        txtUrl = new JTextField(defaultUrl != null ? defaultUrl : "http://www.datse.com.br/dev/syncjava.php", 40);
         panelConfig.add(txtUrl, gbc);
 
         // Usuário
         gbc.gridx = 0; gbc.gridy = 1; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
         panelConfig.add(new JLabel("Usuário:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1;
-        txtUsuario = new JTextField("JOAO", 20);
+        // Load default user from configuration (APIConfig) or leave blank so user enters their credentials
+        String defaultUser = controle.config.APIConfig.getAuthUser();
+        if (defaultUser == null) defaultUser = "";
+        txtUsuario = new JTextField(defaultUser, 20);
         panelConfig.add(txtUsuario, gbc);
 
         // Senha

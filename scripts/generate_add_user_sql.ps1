@@ -1,18 +1,18 @@
 <#
  .SYNOPSIS
-   Gera comandos SQL para cadastrar um usuário (ex: JOAO) no servidor.
+    Gera comandos SQL para cadastrar um usuário (ex: YOUR_USER) no servidor.
    Produz duas variantes: MD5 (legado) e bcrypt (php password_hash) quando possível.
 
 Usage:
-    .\generate_add_user_sql.ps1 -User JOAO -Password YOUR_PASSWORD -Name "João da Silva" -Email joao@exemplo.com
+    .\generate_add_user_sql.ps1 -User YOUR_USER -Password YOUR_PASSWORD -Name "User Example" -Email user@example.com
 
 #>
 
 param(
-    [string]$User = 'JOAO',
+    [string]$User = 'YOUR_USER',
     [string]$Password = $env:TEST_PASSWORD,
-    [string]$Name = 'João da Silva',
-    [string]$Email = 'joao@exemplo.com'
+    [string]$Name = 'Nome Exemplo',
+    [string]$Email = 'user@example.com'
 )
 
 if (-not $Password -or $Password -eq '') {

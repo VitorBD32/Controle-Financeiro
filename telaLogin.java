@@ -10,6 +10,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
+import org.mindrot.jbcrypt.BCrypt;
+
 // Imports para integração com API PIX
 import br.uespi.acessoapi.ClienteHTTP;
 import br.uespi.acessoapi.PIXConexao;
@@ -23,7 +25,7 @@ public class telaLogin extends JFrame{
  private JLabel llogin, lsenha, lretorno;
 
  private static final String ALGORITHM = "AES";
- private static final String API_URL = "http://www.datse.com.br/dev/syncjava.php";
+ private static final String API_URL = controle.config.APIConfig.getSyncUrl();
  
  // Armazena credenciais para passar para próxima tela
  private String usuarioLogado = null;
@@ -45,7 +47,7 @@ public class telaLogin extends JFrame{
   lsenha = new JLabel("Senha:");
   add(lsenha);
   
-  tsenha = new JTextField(20);
+    tsenha = new JPasswordField(20);
   add(tsenha);
   
   lretorno = new JLabel("Retorno:");
@@ -67,22 +69,53 @@ public class telaLogin extends JFrame{
      if(evento.getSource() == logar) {
        try {
         String usuario = tlogin.getText();
-        String senha = tsenha.getText();
+        String senha = new String(((JPasswordField)tsenha).getPassword());
 
-         ClienteHTTP Conexao = new ClienteHTTP(usuario, senha, API_URL);
-	 String ret = Conexao.conecta();
-	 tretorno.setText(ret);
-         
-         // Exibe no terminal a resposta da API
-         System.out.println("============================================");
-         System.out.println("   CONEXÃO COM API - RESPOSTA");
-         System.out.println("============================================");
-         System.out.println("[INFO] Usuário: " + usuario);
-         System.out.println("[INFO] Código de retorno: " + Conexao.codretorno);
-         System.out.println("[INFO] Resposta da API: " + ret);
-         
-         // Verifica se login foi bem-sucedido
-         boolean loginValido = verificarLogin(ret);
+        // Primeiro tente autenticar localmente contra o hash BCrypt no banco de dados
+        boolean loginValido = false;
+        controle.model.Usuario dbUser = null;
+        try {
+            controle.dao.UsuarioDAO udao = new controle.dao.UsuarioDAOImpl();
+            if (usuario != null && usuario.contains("@")) {
+                dbUser = udao.findByEmail(usuario);
+            } else {
+                dbUser = udao.findByNome(usuario);
+            }
+
+            if (dbUser != null && dbUser.getSenha() != null && !dbUser.getSenha().isEmpty()) {
+                // compara com BCrypt
+                try {
+                    loginValido = BCrypt.checkpw(senha, dbUser.getSenha());
+                } catch (Exception ex) {
+                    System.err.println("[WARN] Falha ao validar hash BCrypt: " + ex.getMessage());
+                    loginValido = false;
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("[WARN] Erro ao consultar usuário no DB: " + ex.getMessage());
+            loginValido = false;
+        }
+
+        // Se não autenticou localmente, use a API como fallback (mantendo comportamento anterior)
+        String ret = null;
+        if (!loginValido) {
+            ClienteHTTP Conexao = new ClienteHTTP(usuario, senha, API_URL);
+            ret = Conexao.conecta();
+            tretorno.setText(ret);
+
+            // Exibe no terminal a resposta da API
+            System.out.println("============================================");
+            System.out.println("   CONEXÃO COM API - RESPOSTA");
+            System.out.println("============================================");
+            System.out.println("[INFO] Usuário: " + usuario);
+            System.out.println("[INFO] Código de retorno: " + Conexao.codretorno);
+            System.out.println("[INFO] Resposta da API: " + ret);
+
+            // Verifica se login foi bem-sucedido via API
+            if (verificarLogin(ret)) {
+                loginValido = true;
+            }
+        }
          
          if (loginValido) {
              usuarioLogado = usuario;

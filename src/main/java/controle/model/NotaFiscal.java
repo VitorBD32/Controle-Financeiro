@@ -1,7 +1,6 @@
 package controle.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -55,6 +54,13 @@ public class NotaFiscal {
     private BigDecimal baseCalculoIs = BigDecimal.ZERO;
     private BigDecimal aliquotaIs = BigDecimal.ZERO;
     private BigDecimal valorIs = BigDecimal.ZERO;
+    
+    // Campos adicionados para cálculo automático de tributos via API
+    private BigDecimal valorCBS = BigDecimal.ZERO;  // Contribuição sobre Bens e Serviços
+    private BigDecimal valorIBS = BigDecimal.ZERO;  // Imposto sobre Bens e Serviços
+    private BigDecimal valorIS = BigDecimal.ZERO;   // Imposto Seletivo
+    private String ufEmitente;
+    private String municipioEmitente;
     
     // Impostos legados (transição)
     private BigDecimal valorIcms = BigDecimal.ZERO;
@@ -296,6 +302,22 @@ public class NotaFiscal {
     
     public BigDecimal getValorCbs() { return valorCbs; }
     public void setValorCbs(BigDecimal valorCbs) { this.valorCbs = valorCbs; }
+    
+    // Getters/Setters para novos campos de tributos calculados via API
+    public BigDecimal getValorCBS() { return valorCBS; }
+    public void setValorCBS(BigDecimal valorCBS) { this.valorCBS = valorCBS; }
+    
+    public BigDecimal getValorIBS() { return valorIBS; }
+    public void setValorIBS(BigDecimal valorIBS) { this.valorIBS = valorIBS; }
+    
+    public BigDecimal getValorIS() { return valorIS; }
+    public void setValorIS(BigDecimal valorIS) { this.valorIS = valorIS; }
+    
+    public String getUfEmitente() { return ufEmitente; }
+    public void setUfEmitente(String ufEmitente) { this.ufEmitente = ufEmitente; }
+    
+    public String getMunicipioEmitente() { return municipioEmitente; }
+    public void setMunicipioEmitente(String municipioEmitente) { this.municipioEmitente = municipioEmitente; }
     
     public BigDecimal getBaseCalculoIs() { return baseCalculoIs; }
     public void setBaseCalculoIs(BigDecimal baseCalculoIs) { this.baseCalculoIs = baseCalculoIs; }

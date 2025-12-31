@@ -1,13 +1,41 @@
 package controle.ui;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
-import javax.swing.text.MaskFormatter;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.text.MaskFormatter;
 
 import controle.dao.CartaoDAO;
 import controle.dao.CartaoDAOImpl;
@@ -104,7 +132,7 @@ public class TelaCadastroCartao extends JFrame {
         footerPanel.add(lblSeguranca);
         add(footerPanel, BorderLayout.SOUTH);
 
-        setSize(850, 600);
+        setSize(900, 650);
         setLocationRelativeTo(null);
     }
 
@@ -116,14 +144,23 @@ public class TelaCadastroCartao extends JFrame {
                 new EmptyBorder(20, 20, 20, 20)
         ));
 
-        // Título
-        JLabel lblTitulo = new JLabel("Adicionar Novo Cartão");
-        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        // Título com padding extra
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(new EmptyBorder(0, 0, 15, 0));
+        JLabel lblTitulo = new JLabel("💳 Adicionar Novo Cartão");
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
         lblTitulo.setForeground(PRIMARY_COLOR);
-        panel.add(lblTitulo, BorderLayout.NORTH);
+        headerPanel.add(lblTitulo, BorderLayout.WEST);
+        panel.add(headerPanel, BorderLayout.NORTH);
+
+        // Container para formulário com scroll
+        JPanel containerPanel = new JPanel(new BorderLayout());
+        containerPanel.setBackground(Color.WHITE);
 
         // Formulário
         JPanel fieldsPanel = new JPanel(new GridBagLayout());
+        fieldsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
         fieldsPanel.setBackground(Color.WHITE);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 5, 8, 5);
@@ -213,24 +250,60 @@ public class TelaCadastroCartao extends JFrame {
         lblValidacao.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         fieldsPanel.add(lblValidacao, gbc);
 
-        panel.add(fieldsPanel, BorderLayout.CENTER);
+        // Envolver formulário em JScrollPane
+        final JScrollPane scrollPane = new JScrollPane(fieldsPanel);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        containerPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        panel.add(containerPanel, BorderLayout.CENTER);
 
-        // Botões
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        // Botões com destaque maior
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 15));
         buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(222, 226, 230)),
+                new EmptyBorder(10, 10, 10, 10)
+        ));
 
-        JButton btnLimpar = new JButton("Limpar");
+        JButton btnLimpar = new JButton("🧹 Limpar");
+        btnLimpar.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnLimpar.setPreferredSize(new Dimension(120, 40));
+        btnLimpar.setFocusPainted(false);
         btnLimpar.addActionListener(e -> limparFormulario());
 
-        JButton btnSalvar = new JButton("💾 Salvar Cartão");
+        JButton btnSalvar = new JButton("💾 SALVAR CARTÃO");
         btnSalvar.setBackground(SUCCESS_COLOR);
         btnSalvar.setForeground(Color.WHITE);
-        btnSalvar.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSalvar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnSalvar.setPreferredSize(new Dimension(180, 45));
+        btnSalvar.setFocusPainted(false);
+        btnSalvar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSalvar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(34, 139, 34), 2),
+                new EmptyBorder(5, 15, 5, 15)
+        ));
         btnSalvar.addActionListener(e -> salvarCartao());
+        
+        // Efeito hover no botão salvar
+        btnSalvar.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                btnSalvar.setBackground(new Color(34, 139, 34));
+            }
+            public void mouseExited(MouseEvent e) {
+                btnSalvar.setBackground(SUCCESS_COLOR);
+            }
+        });
 
         buttonPanel.add(btnLimpar);
         buttonPanel.add(btnSalvar);
         panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        // Scroll automático para o topo quando a janela abrir
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.getVerticalScrollBar().setValue(0);
+            txtNumeroCartao.requestFocusInWindow();
+        });
 
         return panel;
     }

@@ -1,5 +1,5 @@
-# Instruções rápidas para o professor / DBA — Opção A (Cadastrar JOAO)
-Este arquivo contém tudo pronto para o professor ou administrador do servidor aplicar a "Opção A": adicionar o usuário JOAO no banco de dados que o endpoint `syncjava.php` consulta, e verificar a autenticação via HTTP.
+# Instruções rápidas para o professor / DBA — Opção A (Cadastrar usuário exemplo)
+Este arquivo contém tudo pronto para o professor ou administrador do servidor aplicar a "Opção A": adicionar um usuário de exemplo (YOUR_USER) no banco de dados que o endpoint `syncjava.php` consulta, e verificar a autenticação via HTTP.
 
 IMPORTANTE: eu não tenho acesso ao servidor remoto. Estas instruções devem ser executadas por alguém com acesso ao banco de dados do servidor (DBA / professor).
 
@@ -7,7 +7,7 @@ IMPORTANTE: eu não tenho acesso ao servidor remoto. Estas instruções devem se
 
 ## 1) SQL pronto (opções)
 
-Local: `docs/add_user_joao.sql` (já incluído no repositório). Copie e adapte se necessário.
+Local: `docs/add_user_example.sql` (já incluído no repositório). Copie e adapte se necessário.
 
 Opções fornecidas:
 
@@ -16,7 +16,7 @@ Opções fornecidas:
 ```sql
 -- Ajuste o nome da tabela/colunas se o schema do servidor diferir
 INSERT INTO usuarios (login, senha, nome, email)
-VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao23@gmail.com');
+VALUES ('YOUR_USER', MD5('YOUR_PASSWORD'), 'User Example', 'user@example.com');
 ```
 
 - Variante A2 — bcrypt (recomendado se o servidor usa password_hash do PHP)
@@ -27,7 +27,7 @@ $body = @{ email = 'joao23@gmail.com'; senha = 'YOUR_PASSWORD' }
 --data-urlencode "senha=YOUR_PASSWORD"
 ```php
 <?php
-INSERT INTO usuarios (login, senha, nome, email) VALUES ('JOAO', MD5('YOUR_PASSWORD'), 'João da Silva', 'joao23@gmail.com');
+INSERT INTO usuarios (login, senha, nome, email) VALUES ('YOUR_USER', MD5('YOUR_PASSWORD'), 'User Example', 'user@example.com');
 echo password_hash('YOUR_PASSWORD', PASSWORD_BCRYPT) . "\n";
 ?>
 Nunca compartilhe senhas reais; os exemplos aqui usam `YOUR_PASSWORD` apenas para testes.
@@ -37,7 +37,7 @@ Nunca compartilhe senhas reais; os exemplos aqui usam `YOUR_PASSWORD` apenas par
 
 ```sql
 INSERT INTO usuarios (login, senha, nome, email)
-VALUES ('JOAO', '$2y$10$...HASH-GERADO-AQUI...', 'João da Silva', 'joao23@gmail.com');
+VALUES ('YOUR_USER', '$2y$10$...HASH-GERADO-AQUI...', 'User Example', 'user@example.com');
 ```
 
 Observação: verifique o nome correto da tabela e das colunas — alguns servidores usam `username`/`password` em vez de `login`/`senha`.
@@ -50,6 +50,7 @@ Após executar o INSERT, confirme com:
 
 ```sql
 SELECT id_usuario, login, nome, email, senha FROM usuarios WHERE login = 'JOAO' OR email = 'joao23@gmail.com';
+SELECT id_usuario, login, nome, email, senha FROM usuarios WHERE login = 'YOUR_USER' OR email = 'user@example.com';
 ```
 
 Copie a saída e confirme que a coluna `senha` contém o hash esperado (MD5 hex ou `$2y$` para bcrypt).
@@ -64,11 +65,11 @@ Recomendo usar PowerShell com `Invoke-RestMethod` (Windows) ou `curl` (Linux / G
 
 ```powershell
 #$ para senha simples
-$body = @{ email = 'joao23@gmail.com'; senha = 'YOUR_PASSWORD' }
+$body = @{ email = 'user@example.com'; senha = 'YOUR_PASSWORD' }
 Invoke-RestMethod -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method Post -Body $body -ContentType 'application/x-www-form-urlencoded; charset=UTF-8' -Verbose
 
 #$ para senha MD5 (se o servidor espera hash)
-$body = @{ email = 'joao23@gmail.com'; senha = '81dc9bdb52d04dc20036dbd8313ed055' }
+$body = @{ email = 'user@example.com'; senha = '81dc9bdb52d04dc20036dbd8313ed055' }
 Invoke-RestMethod -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method Post -Body $body -ContentType 'application/x-www-form-urlencoded; charset=UTF-8' -Verbose
 ```
 
@@ -77,13 +78,13 @@ Invoke-RestMethod -Uri 'http://www.datse.com.br/dev/syncjava.php' -Method Post -
 ```bash
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
   -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
-  --data-urlencode "email=joao23@gmail.com" \
+  --data-urlencode "email=user@example.com" \
   --data-urlencode "senha=YOUR_PASSWORD"
 
 # ou MD5
 curl -v -X POST "http://www.datse.com.br/dev/syncjava.php" \
   -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
-  --data-urlencode "email=joao23@gmail.com" \
+  --data-urlencode "email=user@example.com" \
   --data-urlencode "senha=81dc9bdb52d04dc20036dbd8313ed055"
 ```
 

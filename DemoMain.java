@@ -1,8 +1,9 @@
-import controle.model.Usuario;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import controle.model.Categoria;
 import controle.model.Transacao;
-import java.time.LocalDateTime;
-import java.math.BigDecimal;
+import controle.model.Usuario;
 
 public class DemoMain {
     public static void main(String[] args) {
@@ -16,15 +17,16 @@ public class DemoMain {
         
         Usuario user1 = new Usuario();
         user1.setId(1);
-        user1.setNome("João Silva");
-        user1.setEmail("joao@email.com");
-        user1.setSenha("senha123");
+        user1.setNome("User Example");
+        user1.setEmail("user@example.com");
+        // Do not store or show real passwords in demo; they must use the registration flow
+        user1.setSenha(null);
         
         Usuario user2 = new Usuario();
         user2.setId(2);
         user2.setNome("Maria Santos");
-        user2.setEmail("maria@email.com");
-        user2.setSenha("senha456");
+        user2.setEmail("user2@example.com");
+        user2.setSenha(null);
         
         System.out.println(user1);
         System.out.println(user2);

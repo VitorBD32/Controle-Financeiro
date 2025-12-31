@@ -1,14 +1,43 @@
 package controle.ui;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.plaf.basic.BasicTabbedPaneUI;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.math.BigDecimal;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 
 import controle.dao.ConfigDAO;
 import controle.dao.ConfigDAOImpl;
@@ -132,8 +161,8 @@ public class TelaAdminSettings extends JFrame {
         add(footerPanel, BorderLayout.SOUTH);
         
         // Configurações da janela
-        setSize(900, 700);
-        setMinimumSize(new Dimension(800, 600));
+        setSize(1000, 750);
+        setMinimumSize(new Dimension(900, 650));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         
@@ -365,7 +394,7 @@ public class TelaAdminSettings extends JFrame {
     private JPanel createEmpresaPanel() {
         JPanel panel = new JPanel(new BorderLayout(15, 15));
         panel.setBackground(BACKGROUND_COLOR);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
         
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -373,8 +402,12 @@ public class TelaAdminSettings extends JFrame {
         
         // Card: Dados do Emissor
         JPanel cardEmissor = createCard("🏢 Dados do Emissor (NF-e / NFS-e)", PRIMARY_COLOR);
-        JPanel gridEmissor = new JPanel(new GridLayout(6, 4, 15, 10));
+        JPanel gridEmissor = new JPanel(new GridBagLayout());
         gridEmissor.setBackground(CARD_COLOR);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 10, 8, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
         
         txtRazaoSocial = createStyledTextField("");
         txtNomeFantasia = createStyledTextField("");
@@ -388,35 +421,63 @@ public class TelaAdminSettings extends JFrame {
         txtTelefone = createStyledTextField("");
         txtEmail = createStyledTextField("");
         
-        gridEmissor.add(new JLabel("Razão Social:"));
-        gridEmissor.add(txtRazaoSocial);
-        gridEmissor.add(new JLabel("Nome Fantasia:"));
-        gridEmissor.add(txtNomeFantasia);
+        // Linha 1: Razão Social (span completo)
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Razão Social:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gridEmissor.add(txtRazaoSocial, gbc);
         
-        gridEmissor.add(new JLabel("CNPJ:"));
-        gridEmissor.add(txtCNPJ);
-        gridEmissor.add(new JLabel("Inscrição Estadual:"));
-        gridEmissor.add(txtInscricaoEstadual);
+        // Linha 2: Nome Fantasia (span completo)
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Nome Fantasia:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gridEmissor.add(txtNomeFantasia, gbc);
         
-        gridEmissor.add(new JLabel("Inscrição Municipal:"));
-        gridEmissor.add(txtInscricaoMunicipal);
-        gridEmissor.add(new JLabel("Endereço:"));
-        gridEmissor.add(txtEndereco);
+        // Linha 3: CNPJ | Inscrição Estadual
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("CNPJ:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 1; gbc.weightx = 0.5;
+        gridEmissor.add(txtCNPJ, gbc);
+        gbc.gridx = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Inscrição Estadual:"), gbc);
+        gbc.gridx = 3; gbc.gridwidth = 1; gbc.weightx = 0.5;
+        gridEmissor.add(txtInscricaoEstadual, gbc);
         
-        gridEmissor.add(new JLabel("Cidade:"));
-        gridEmissor.add(txtCidade);
-        gridEmissor.add(new JLabel("UF:"));
-        gridEmissor.add(txtUF);
+        // Linha 4: Inscrição Municipal | UF
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Inscrição Municipal:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 1; gbc.weightx = 0.5;
+        gridEmissor.add(txtInscricaoMunicipal, gbc);
+        gbc.gridx = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("UF:"), gbc);
+        gbc.gridx = 3; gbc.gridwidth = 1; gbc.weightx = 0.2;
+        gridEmissor.add(txtUF, gbc);
         
-        gridEmissor.add(new JLabel("CEP:"));
-        gridEmissor.add(txtCEP);
-        gridEmissor.add(new JLabel("Telefone:"));
-        gridEmissor.add(txtTelefone);
+        // Linha 5: Endereço (span completo)
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Endereço:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gridEmissor.add(txtEndereco, gbc);
         
-        gridEmissor.add(new JLabel("E-mail:"));
-        gridEmissor.add(txtEmail);
-        gridEmissor.add(new JLabel(""));
-        gridEmissor.add(new JLabel(""));
+        // Linha 6: Cidade | CEP
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Cidade:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 1; gbc.weightx = 0.6;
+        gridEmissor.add(txtCidade, gbc);
+        gbc.gridx = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("CEP:"), gbc);
+        gbc.gridx = 3; gbc.gridwidth = 1; gbc.weightx = 0.4;
+        gridEmissor.add(txtCEP, gbc);
+        
+        // Linha 7: Telefone | E-mail
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("Telefone:"), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 1; gbc.weightx = 0.4;
+        gridEmissor.add(txtTelefone, gbc);
+        gbc.gridx = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        gridEmissor.add(createLabel("E-mail:"), gbc);
+        gbc.gridx = 3; gbc.gridwidth = 1; gbc.weightx = 0.6;
+        gridEmissor.add(txtEmail, gbc);
         
         cardEmissor.add(gridEmissor, BorderLayout.CENTER);
         content.add(cardEmissor);
@@ -607,17 +668,24 @@ public class TelaAdminSettings extends JFrame {
      * Cria o footer com botões
      */
     private JPanel createFooterPanel() {
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 20));
         footer.setBackground(BACKGROUND_COLOR);
-        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, DIVIDER_COLOR));
+        footer.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(2, 0, 0, 0, DIVIDER_COLOR),
+            BorderFactory.createEmptyBorder(5, 15, 5, 15)
+        ));
         
-        JButton btnRestaurar = createStyledButton("Restaurar Padrões", WARNING_COLOR, Color.WHITE);
+        JButton btnRestaurar = createStyledButton("🔄 Restaurar Padrões", WARNING_COLOR, Color.WHITE);
+        btnRestaurar.setPreferredSize(new Dimension(180, 42));
         btnRestaurar.addActionListener(e -> restaurarPadroes());
         
         JButton btnCancelar = createStyledButton("Cancelar", TEXT_SECONDARY, Color.WHITE);
+        btnCancelar.setPreferredSize(new Dimension(130, 42));
         btnCancelar.addActionListener(e -> dispose());
         
-        JButton btnSalvar = createStyledButton("💾 Salvar Configurações", ACCENT_COLOR, Color.WHITE);
+        JButton btnSalvar = createStyledButton("💾 SALVAR CONFIGURAÇÕES", ACCENT_COLOR, Color.WHITE);
+        btnSalvar.setPreferredSize(new Dimension(220, 45));
+        btnSalvar.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnSalvar.addActionListener(e -> salvarConfig());
         
         footer.add(btnRestaurar);
@@ -631,22 +699,35 @@ public class TelaAdminSettings extends JFrame {
      * Cria um card com título e borda
      */
     private JPanel createCard(String titulo, Color corTitulo) {
-        JPanel card = new JPanel(new BorderLayout(10, 10));
+        JPanel card = new JPanel(new BorderLayout(15, 15));
         card.setBackground(CARD_COLOR);
         card.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(DIVIDER_COLOR, 1, true),
-            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+            BorderFactory.createEmptyBorder(20, 25, 25, 25)
         ));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 450));
         
         // Título do card
         JLabel lblTitulo = new JLabel(titulo);
-        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblTitulo.setForeground(corTitulo);
-        lblTitulo.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, corTitulo));
+        lblTitulo.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 2, 0, corTitulo),
+            BorderFactory.createEmptyBorder(0, 0, 15, 0)
+        ));
         card.add(lblTitulo, BorderLayout.NORTH);
         
         return card;
+    }
+    
+    /**
+     * Cria um JLabel estilizado para os campos
+     */
+    private JLabel createLabel(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        label.setForeground(TEXT_PRIMARY);
+        return label;
     }
     
     /**
@@ -654,10 +735,11 @@ public class TelaAdminSettings extends JFrame {
      */
     private JTextField createStyledTextField(String texto) {
         JTextField field = new JTextField(texto);
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        field.setEditable(true); // Garantir que o admin pode editar todos os campos
         field.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(DIVIDER_COLOR, 1, true),
-            BorderFactory.createEmptyBorder(8, 10, 8, 10)
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
         
         // Efeito de foco

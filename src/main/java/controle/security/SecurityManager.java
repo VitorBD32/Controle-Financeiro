@@ -1,11 +1,5 @@
 package controle.security;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -13,6 +7,13 @@ import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.Base64;
 import java.util.regex.Pattern;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * GERENCIADOR DE SEGURANÇA - CONTROLE FINANCEIRO
@@ -632,7 +633,7 @@ public class SecurityManager {
             "'; DROP TABLE users; --",
             "1 OR 1=1",
             "normal_input",
-            "João da Silva"
+            "User Example"
         };
         
         System.out.println("1. Teste SQL Injection:");

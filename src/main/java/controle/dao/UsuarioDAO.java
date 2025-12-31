@@ -19,4 +19,7 @@ public interface UsuarioDAO {
     boolean update(Usuario u) throws Exception;
 
     boolean delete(int id) throws Exception;
+
+    // Returns true if there is at least one admin user in the system
+    boolean existsAdmin() throws Exception;
 }
